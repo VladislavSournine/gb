@@ -3,7 +3,8 @@
     Blocks game websites on a Windows PC via the hosts file.
 
 .DESCRIPTION
-    Downloads a plain-text domain list (UT1 "games" blacklist by default),
+    Downloads plain-text domain lists (by default: the UT1 "games" blacklist
+    plus custom-block.txt from the same GitHub repo),
     writes every domain (plus its www. variant) to the hosts file as 0.0.0.0,
     and disables DNS-over-HTTPS in Chrome / Edge / Firefox so browsers
     cannot bypass the hosts file.
@@ -13,7 +14,8 @@
     deletes it cleanly. Anything else in hosts is never touched.
 
 .PARAMETER ListUrl
-    URL of a plain-text list, one domain per line. Lines starting with # are ignored.
+    One or more URLs of plain-text lists, one domain per line. Lines starting with # are ignored.
+    All lists are merged. If any list fails to download, the hosts file is left unchanged.
 
 .PARAMETER Extra
     Additional domains to block on top of the list, e.g. -Extra roblox.com,epicgames.com
@@ -38,7 +40,10 @@
 #>
 [CmdletBinding()]
 param(
-    [string]   $ListUrl   = 'https://raw.githubusercontent.com/olbat/ut1-blacklists/master/blacklists/games/domains',
+    [string[]] $ListUrl   = @(
+        'https://raw.githubusercontent.com/olbat/ut1-blacklists/master/blacklists/games/domains',
+        'https://raw.githubusercontent.com/VladislavSournine/gb/main/custom-block.txt'
+    ),
     [string[]] $Extra     = @(),
     [switch]   $Remove,
     [switch]   $NoWww,
@@ -95,9 +100,9 @@ function Remove-BlockSection {
 }
 
 function Add-BlockSection {
-    param([string[]] $HostsLines, [string[]] $Entries, [string] $Source)
+    param([string[]] $HostsLines, [string[]] $Entries, [string[]] $Source)
     $base = Remove-BlockSection $HostsLines
-    $header = @('', $MarkerBegin, "# source: $Source", "# updated: $(Get-Date -Format 'yyyy-MM-dd HH:mm')")
+    $header = @('', $MarkerBegin) + @($Source | ForEach-Object { "# source: $_" }) + "# updated: $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
     return ,@($base + $header + $Entries + $MarkerEnd)
 }
 
@@ -146,9 +151,13 @@ function Invoke-GameBlock {
         return
     }
 
-    Write-Host "Downloading list: $ListUrl"
-    $raw = (Invoke-WebRequest -Uri $ListUrl -UseBasicParsing -ErrorAction Stop).Content
-    $lines = @($raw -split "`r?`n") + $Extra
+    $lines = [System.Collections.Generic.List[string]]::new()
+    foreach ($url in $ListUrl) {
+        Write-Host "Downloading list: $url"
+        $raw = (Invoke-WebRequest -Uri $url -UseBasicParsing -ErrorAction Stop).Content
+        $lines.AddRange([string[]]($raw -split "`r?`n"))
+    }
+    $lines.AddRange([string[]]$Extra)
     $entries = Get-BlockEntries -Lines $lines -NoWww:$NoWww
     if ($entries.Count -lt $MinExpectedDomains) {
         throw "Only $($entries.Count) domains parsed - list looks broken, hosts file left unchanged."
