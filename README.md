@@ -166,7 +166,55 @@ appx: CN=Microsoft Corporation, ... | Microsoft.MinecraftUWP # програма 
 allow: %OSDRIVE%\Users\*\Documents\UnityProjects\*      # ДОЗВОЛИТИ папку (лише для -Strict)
 ```
 
-У файлі вже є Roblox, Minecraft Java/TLauncher, Steam, Epic, Riot, EA, Ubisoft, Battle.net і Xbox-ігри. Minecraft Education не блокується. Щоб додати нове, скопіюй потрібні рядки з `apps-block-<ПК>.txt` і збережи файл на GitHub.
+У файлі вже є Roblox, Minecraft Java/TLauncher, Steam, Epic, Riot, EA, Ubisoft, Battle.net і Xbox-ігри. Minecraft Education не блокується.
+
+### Як додати знайдені ігри у список
+
+`find-games.ps1` записує правила в `apps-block-<ПК>.txt` у тому самому форматі, що й `apps-block.txt`, тож їх можна просто скопіювати. **Самі вони нікуди не потрапляють:** `gb apps` бере правила лише з `apps-block.txt` на GitHub.
+
+1. **Знайди ігри** на одному або кількох ПК:
+
+   ```powershell
+   gb find -OutDir E:\
+   ```
+
+   На флешці з'явиться `apps-block-<ПК>.txt` для кожного комп'ютера. Приклад:
+
+   ```
+   # [Game] Roblox (name: Roblox) users: kid1, kid2
+   path: %OSDRIVE%\Users\*\AppData\Local\Roblox\*
+
+   # [Game] Hollow Knight (engine: UnityPlayer.dll) users: kid3
+   path: %OSDRIVE%\Users\*\Desktop\HollowKnight\*
+
+   # [Social] BytedancePte.Ltd.TikTok (Microsoft Store package)
+   appx: CN=..., O=..., C=US | BytedancePte.Ltd.TikTok
+   ```
+
+   Рядок з `#` — це коментар: що знайдено, чому скрипт вважає це грою, у яких учнів. Наступний рядок без `#` — саме правило.
+
+2. **Переглянь і видали зайве.** Прибери правила для того, що блокувати не треба. Найчастіше це рядки `[UserApp]`: їх показує тільки `-All`, і серед них трапляються звичайні програми. Рядки `[Social]` (TikTok, Discord...) залиш або прибери — на свій розсуд. Учнівські збірки Unity (`[UnityProject]`) правила не мають, їх скрипт лише показує.
+
+3. **Додай правила в `apps-block.txt` на GitHub:**
+   1. Відкрий репозиторій на github.com → файл `apps-block.txt` → іконка олівця (Edit).
+   2. Встав скопійовані рядки в кінець файлу. Коментарі `#` теж можна вставити, вони допоможуть згадати, звідки правило.
+   3. Натисни **Commit changes**.
+
+   Дублікати не страшні: однакові правила з різних ПК скрипт об'єднує сам.
+
+4. **Застосуй на кожному ПК.** Сам AppLocker не оновлюється, на відміну від блокування сайтів. Тому після зміни списку запусти на кожному комп'ютері:
+
+   ```powershell
+   gb apps -AuditOnly   # спершу перевірити, що нічого зайвого не заблокується (журнал AppLocker)
+   gb apps              # заблокувати
+   ```
+
+   Якщо в списку є рядок, якого скрипт не розуміє, він пропустить його з попередженням `Skipped: ...`, а решту правил застосує.
+
+Що варто знати про правила:
+- **`path: ...\Users\*\...`** діє на всіх учнів. `*` замість імені користувача скрипт підставляє сам.
+- **`path: ...\Desktop\<Тека>\*`** прив'язане до назви теки. Учень може перейменувати теку, і гра запуститься. Від цього захищає `publisher:` (якщо гра підписана) або режим `-Strict`.
+- **`publisher: ...`** скрипт пропонує, коли гра підписана видавцем. Таке правило діє, хоч куди перенеси файл.
 
 ## 3. Заблокувати: `block-apps.ps1`
 
