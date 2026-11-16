@@ -1,5 +1,5 @@
 # Issue "Додати ігри" (from .github/ISSUE_TEMPLATE/add-games.yml) -> rules appended to apps-block.txt.
-# Only the repository owner's issues are processed; anyone else's are ignored.
+# Only issues from people with write access (owner, collaborators) are processed; anyone else's are ignored.
 name: Add games
 
 on:
@@ -14,7 +14,7 @@ concurrency: add-games
 
 jobs:
   add:
-    if: github.event.issue.user.login == github.repository_owner && startsWith(github.event.issue.title, 'Додати ігри')
+    if: contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association) && startsWith(github.event.issue.title, 'Додати ігри')
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
