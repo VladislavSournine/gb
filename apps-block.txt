@@ -30,6 +30,14 @@ path: %PROGRAMFILES%\Ubisoft\*
 path: %PROGRAMFILES%\Battle.net\*
 path: %OSDRIVE%\XboxGames\*
 
+# --- Додаткові блокування DESKTOP-B37TR6S ---
+
+# Roblox — всі підписані застосунки Roblox
+publisher: O=ROBLOX CORPORATION, L=SAN MATEO, S=CALIFORNIA, C=US | *
+
+# TLauncher
+publisher: O=TLAUNCHER INC., L=VICTORIA, S=MAHÉ, C=SC | TL
+
 # --- Розкоментуй, якщо треба (прибери # на початку) ---
 # path: %OSDRIVE%\Users\*\AppData\Local\Discord\*
 # path: %OSDRIVE%\Users\*\AppData\Roaming\Telegram Desktop\*
