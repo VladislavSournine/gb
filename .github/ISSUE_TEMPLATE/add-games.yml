@@ -1,0 +1,15 @@
+name: Додати ігри
+description: Додати правила з apps-block-<ПК>.txt у список блокування
+title: Додати ігри
+body:
+  - type: textarea
+    id: rules
+    attributes:
+      label: Правила
+      description: Встав рядки з apps-block-<ПК>.txt (find-games). Рядки з # теж можна. Зайве (те, що блокувати не треба) спершу видали.
+      placeholder: |
+        # [Game] Roblox (name: Roblox) users: kid1
+        path: %OSDRIVE%\Users\*\AppData\Local\Roblox\*
+      render: text
+    validations:
+      required: true

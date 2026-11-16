@@ -1,0 +1,42 @@
+# Issue "Додати ігри" (from .github/ISSUE_TEMPLATE/add-games.yml) -> rules appended to apps-block.txt.
+# Only the repository owner's issues are processed; anyone else's are ignored.
+name: Add games
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency: add-games
+
+jobs:
+  add:
+    if: github.event.issue.user.login == github.repository_owner && startsWith(github.event.issue.title, 'Додати ігри')
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      NUMBER: ${{ github.event.issue.number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: rules
+        shell: pwsh
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: ./tools/add-rules.ps1
+
+      - if: steps.rules.outputs.changed == 'true'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git commit -am "Add rules from issue #$NUMBER"
+          git push
+
+      - run: gh issue comment "$NUMBER" --body-file "$RUNNER_TEMP/reply.md"
+
+      - if: steps.rules.outputs.ok == 'true'
+        run: gh issue close "$NUMBER"
