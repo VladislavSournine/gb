@@ -209,6 +209,10 @@ function Initialize-BackupDir {
        rights). By default any user may create files under ProgramData, so without this a student could plant
        a "backup" with an allow-everything policy and wait for -Undo. #>
     New-Item -ItemType Directory -Path $BackupDir -Force | Out-Null
+    # a junction planted by a student would make Set-Acl lock (and our files land in) some other folder
+    if ((Get-Item -LiteralPath $BackupDir -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) {
+        throw "$BackupDir is a link (junction/symlink), not a real folder - refusing. Delete it and run again."
+    }
     $acl = [Security.AccessControl.DirectorySecurity]::new()
     $acl.SetAccessRuleProtection($true, $false)
     foreach ($sid in $SidAdmins, $SidSystem) {

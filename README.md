@@ -11,26 +11,50 @@
 
 Більше нічого встановлювати не треба. Команда `irm ... | iex` не залежить від Execution Policy: скрипт не зберігається у файл.
 
+## Коротка команда `gb`
+
+Щоб не вставляти щоразу довгі команди, один раз на кожному ПК встанови `gb` (PowerShell від адміністратора):
+
+```powershell
+irm https://raw.githubusercontent.com/VladislavSournine/gb/main/install-gb.ps1 | iex
+```
+
+Далі в будь-якому вікні PowerShell від адміністратора:
+
+| Команда | Що робить |
+|---|---|
+| `gb` | довідка |
+| `gb sites` | заблокувати сайти й встановити автооновлення (те саме, що «Швидкий запуск» нижче) |
+| `gb sites -Remove` | прибрати блокування сайтів |
+| `gb apps -AuditOnly` | AppLocker у тестовому режимі |
+| `gb apps` / `gb apps -Strict` | заблокувати програми |
+| `gb apps -Undo` | відкат AppLocker на крок назад |
+| `gb apps -Remove` | вимкнути всі правила AppLocker |
+| `gb find -All -OutDir E:\` | знайти ігри |
+| `gb uninstall` | прибрати саму команду `gb` (блокування лишаються) |
+
+Усі параметри скриптів, описані нижче, працюють і через `gb`, наприклад `gb sites -Extra roblox.com,epicgames.com -NoAutoUpdate`.
+
+Як це працює:
+- `gb` щоразу завантажує **найновішу** версію скрипта з GitHub, тож зміни в репозиторії діють одразу, без перевстановлення. Без інтернету `gb` не працює.
+- Встановлюються два файли: `C:\Program Files\SysTools\gb.ps1` і `C:\Windows\gb.cmd`. Писати в ці теки можуть лише адміністратори, тож учень не підмінить команду. Execution Policy змінювати не треба.
+- Без прав адміністратора `gb` одразу зупиняється.
+- Повторний запуск інсталятора оновлює `gb.ps1`. Потрібно лише тоді, коли змінився сам `gb.ps1`, а не інші скрипти.
+
 ## Відкат: коротко
 
-| Що відкотити | Команда (PowerShell від адміністратора) |
-|---|---|
-| Блокування сайтів, задачу й політики браузерів | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/VladislavSournine/gb/main/block-games.ps1))) -Remove` |
-| AppLocker: повернути стан до останнього запуску | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/VladislavSournine/gb/main/block-apps.ps1))) -Undo` |
-| AppLocker: вимкнути всі правила | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/VladislavSournine/gb/main/block-apps.ps1))) -Remove` |
+| Що відкотити | З `gb` | Без `gb` (PowerShell від адміністратора) |
+|---|---|---|
+| Блокування сайтів, задачу й політики браузерів | `gb sites -Remove` | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/VladislavSournine/gb/main/block-games.ps1))) -Remove` |
+| AppLocker: повернути стан до останнього запуску | `gb apps -Undo` | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/VladislavSournine/gb/main/block-apps.ps1))) -Undo` |
+| AppLocker: вимкнути всі правила | `gb apps -Remove` | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/VladislavSournine/gb/main/block-apps.ps1))) -Remove` |
 
 Подробиці у розділі [Відкат AppLocker](#відкат-applocker).
 
 ## Швидкий запуск
 
 1. Відкрий PowerShell **від адміністратора** (Win+X → «Термінал (адміністратор)»).
-2. Встав команду:
-
-   ```powershell
-   irm is.gd/4N9GTq | iex
-   ```
-
-   Коротке посилання [is.gd/4N9GTq](https://is.gd/4N9GTq) веде на скрипт у цьому репозиторії. Якщо шкільна мережа блокує шортнери, використовуй повне посилання:
+2. Встав команду (або `gb sites`, якщо `gb` встановлено):
 
    ```powershell
    irm https://raw.githubusercontent.com/VladislavSournine/gb/main/block-games.ps1 | iex
@@ -219,6 +243,7 @@ $u = 'https://raw.githubusercontent.com/VladislavSournine/gb/main/block-apps.ps1
 ```bash
 pwsh ./tests/block-games.tests.ps1
 pwsh ./tests/apps.tests.ps1
+pwsh ./tests/gb.tests.ps1
 ```
 
 Тести не потребують Pester і нічого не змінюють у системі: вони перевіряють пошук шляхів, розпізнавання ігор, розбір правил і XML-політику AppLocker.
