@@ -134,6 +134,23 @@ function ConvertTo-AppLockerPath {
     return "$p\*"
 }
 
+function ConvertTo-SafeText {
+    <# Product / company / signer names come from the exe itself, so a student controls them.
+       Control characters go: a newline would start a new line (e.g. "allow: ...") in apps-block-<PC>.txt. #>
+    param([string] $Text)
+    return ("$Text" -replace '\p{Cc}', ' ').Trim()
+}
+
+function ConvertTo-CsvSafe {
+    <# Copies of the rows where text starting with = + - @ gets a leading ' so Excel shows it instead of running it as a formula. #>
+    param([object[]] $Rows)
+    foreach ($r in $Rows) {
+        $c = $r.PSObject.Copy()
+        foreach ($p in $c.PSObject.Properties) { if ($p.Value -is [string] -and $p.Value -match '^[=+\-@]') { $p.Value = "'" + $p.Value } }
+        $c
+    }
+}
+
 function Test-GameSignal {
     <# Decides whether an exe looks like a game. Returns the reason string, or $null. #>
     param([string] $ExePath, [string] $Product, [string] $Company, [string[]] $FolderFiles)
@@ -232,7 +249,7 @@ function Find-Games {
             }
             $vi = $null; try { $vi = [Diagnostics.FileVersionInfo]::GetVersionInfo($exe) } catch { }
             $product = ''; $company = ''
-            if ($vi) { $product = "$($vi.ProductName)".Trim(); $company = "$($vi.CompanyName)".Trim() }
+            if ($vi) { $product = ConvertTo-SafeText $vi.ProductName; $company = ConvertTo-SafeText $vi.CompanyName }
 
             if ($DevToolPathRegex.IsMatch($exe)) { continue }             # Unity Editor, Visual Studio, ...
             $inProfile = $exe.StartsWith("$sys\Users\", [StringComparison]::OrdinalIgnoreCase)
@@ -251,7 +268,7 @@ function Find-Games {
             if ($hasAppLocker) {
                 try {
                     $info = Get-AppLockerFileInformation -Path $exe -ErrorAction Stop
-                    if ($info.Publisher) { $alPublisher = $info.Publisher.PublisherName; $alProduct = $info.Publisher.ProductName }
+                    if ($info.Publisher) { $alPublisher = ConvertTo-SafeText $info.Publisher.PublisherName; $alProduct = ConvertTo-SafeText $info.Publisher.ProductName }
                 } catch { }
             }
             $user = ''; if ($inProfile) { $user = ($exe.Substring($sys.Length + 7) -split '\\')[0] }
@@ -334,7 +351,7 @@ function Invoke-FindGames {
     New-Item -ItemType Directory -Path $OutDir -Force | Out-Null
     $csv   = Join-Path $OutDir "games-$env:COMPUTERNAME.csv"
     $rules = Join-Path $OutDir "apps-block-$env:COMPUTERNAME.txt"
-    $rows | Export-Csv -Path $csv -NoTypeInformation -Encoding UTF8
+    ConvertTo-CsvSafe $rows | Export-Csv -Path $csv -NoTypeInformation -Encoding UTF8
     [IO.File]::WriteAllLines($rules, (Format-RuleFile -Rows $rows -Computer $env:COMPUTERNAME), [Text.UTF8Encoding]::new($false))
 
     $rows | Sort-Object Category, App | Format-Table Category, App, Exe, User, Reason -AutoSize | Out-Host

@@ -78,6 +78,17 @@ Assert-Equal 'scan: finds exes, skips Microsoft folder' @('deep.exe', 'RobloxPla
 Assert-Equal 'scan: respects depth' @('RobloxPlayerBeta.exe') @(Get-ExeFiles -Root $tmp -MaxDepth 3 | ForEach-Object { [IO.Path]::GetFileName($_) })
 Remove-Item -Recurse -Force $tmp
 
+# --- exe metadata is attacker-controlled: no injected rule lines, no spreadsheet formulas
+$evil = "Cool Game`r`nallow: %OSDRIVE%\Users\*\Downloads\*"
+Assert-Equal 'safe: newline removed'      'Cool Game  allow: %OSDRIVE%\Users\*\Downloads\*' (ConvertTo-SafeText $evil)
+Assert-Equal 'safe: tab and NUL removed'  'a b c' (ConvertTo-SafeText "a`tb`0c")
+Assert-Equal 'safe: null -> empty'        '' (ConvertTo-SafeText $null)
+$injected = Format-RuleFile -Rows @([pscustomobject]@{ Category = 'Game'; App = (ConvertTo-SafeText $evil); User = ''; Reason = 'name: game'; Rule = 'path: D:\X\*' }) -Computer 'PC'
+Assert-Equal 'safe: no injected allow line' 0 @($injected | Where-Object { $_ -match '^allow:' }).Count
+$csvRow = @(ConvertTo-CsvSafe @([pscustomobject]@{ App = '=HYPERLINK("http://x")'; Company = '+1'; Exe = '-x.exe'; User = '@kid'; Path = 'C:\a.exe'; Signed = $true }))[0]
+Assert-Equal 'csv: formulas defused'  "'=HYPERLINK(`"http://x`") '+1 '-x.exe '@kid" "$($csvRow.App) $($csvRow.Company) $($csvRow.Exe) $($csvRow.User)"
+Assert-Equal 'csv: normal text kept'  'C:\a.exe True' "$($csvRow.Path) $($csvRow.Signed)"
+
 # --- Format-RuleFile
 $rows = @(
     [pscustomobject]@{ Category = 'Game'; App = 'Roblox'; User = 'kid1'; Reason = 'name: Roblox'; Rule = 'path: %OSDRIVE%\Users\*\AppData\Local\Roblox\*' },

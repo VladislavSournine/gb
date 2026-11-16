@@ -224,6 +224,25 @@ function Get-ListText {
     }
 }
 
+function Initialize-LogDir {
+    <# The task runs as SYSTEM and writes its log here. Any user may create folders under ProgramData, so a student
+       could pre-create this one and put a link named last-run.log pointing at a system file. Refuse links,
+       lock the folder to Administrators + SYSTEM, and delete an old log (deleting a link does not touch its target). #>
+    New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
+    if ((Get-Item -LiteralPath $LogDir -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) {
+        throw "$LogDir is a link (junction/symlink), not a real folder."
+    }
+    $acl = [Security.AccessControl.DirectorySecurity]::new()
+    $acl.SetAccessRuleProtection($true, $false)
+    foreach ($sid in 'S-1-5-32-544', 'S-1-5-18') {   # Administrators, SYSTEM
+        $acl.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new(
+            [Security.Principal.SecurityIdentifier]::new($sid), 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow'))
+    }
+    $acl.SetOwner([Security.Principal.SecurityIdentifier]::new('S-1-5-32-544'))
+    Set-Acl -LiteralPath $LogDir -AclObject $acl -ErrorAction Stop
+    Remove-Item -LiteralPath "$LogDir\last-run.log" -Force -ErrorAction SilentlyContinue
+}
+
 function Invoke-GameBlock {
     $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
         [Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -275,9 +294,11 @@ function Invoke-GameBlock {
 # Run unless dot-sourced (tests dot-source the file to load the functions only).
 if ($MyInvocation.InvocationName -ne '.') {
     if ($FromTask) {
-        New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
-        Start-Transcript -Path "$LogDir\last-run.log" -Force | Out-Null
-        try { Invoke-GameBlock } finally { Stop-Transcript | Out-Null }
+        # an unsafe log folder must not stop the block update itself: run without a log then
+        $logOk = $true
+        try { Initialize-LogDir } catch { $logOk = $false; Write-Warning "Log disabled: $($_.Exception.Message)" }
+        if ($logOk) { Start-Transcript -Path "$LogDir\last-run.log" -Force | Out-Null }
+        try { Invoke-GameBlock } finally { if ($logOk) { Stop-Transcript | Out-Null } }
     } else {
         Invoke-GameBlock
     }
