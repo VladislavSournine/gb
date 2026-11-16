@@ -224,23 +224,72 @@ function Get-ListText {
     }
 }
 
-function Initialize-LogDir {
-    <# The task runs as SYSTEM and writes its log here. Any user may create folders under ProgramData, so a student
-       could pre-create this one and put a link named last-run.log pointing at a system file. Refuse links,
-       lock the folder to Administrators + SYSTEM, and delete an old log (deleting a link does not touch its target). #>
-    New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
-    if ((Get-Item -LiteralPath $LogDir -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) {
-        throw "$LogDir is a link (junction/symlink), not a real folder."
-    }
+# --- secure folder: these three functions are kept IDENTICAL in block-apps.ps1 and block-games.ps1
+#     (each script runs standalone via irm; tests/apps.tests.ps1 checks the copies match).
+#     By default any user may create folders under ProgramData, so a student could pre-create ours,
+#     plant files or swap it for a junction pointing elsewhere.
+
+function New-LockedDirSecurity {
+    <# Administrators + SYSTEM full control, nothing inherited from ProgramData, owner Administrators. #>
     $acl = [Security.AccessControl.DirectorySecurity]::new()
     $acl.SetAccessRuleProtection($true, $false)
-    foreach ($sid in 'S-1-5-32-544', 'S-1-5-18') {   # Administrators, SYSTEM
+    foreach ($sid in 'S-1-5-32-544', 'S-1-5-18') {
         $acl.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new(
             [Security.Principal.SecurityIdentifier]::new($sid), 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow'))
     }
     $acl.SetOwner([Security.Principal.SecurityIdentifier]::new('S-1-5-32-544'))
-    Set-Acl -LiteralPath $LogDir -AclObject $acl -ErrorAction Stop
-    Remove-Item -LiteralPath "$LogDir\last-run.log" -Force -ErrorAction SilentlyContinue
+    return $acl
+}
+
+function Test-TrustedOwner {
+    <# True when an administrator owns the file/folder: Administrators, SYSTEM, the admin running now, or any member
+       of the local Administrators group (Windows makes the teacher's own account the owner of what they create). #>
+    param([string] $Path)
+    $owner = (Get-Acl -LiteralPath $Path).GetOwner([Security.Principal.SecurityIdentifier]).Value
+    if ($owner -in @('S-1-5-32-544', 'S-1-5-18', [Security.Principal.WindowsIdentity]::GetCurrent().User.Value)) { return $true }
+    # not available in 32-bit PowerShell, fails on groups with orphaned SIDs: then only the SIDs above count
+    $admins = @(); try { $admins = @(Get-LocalGroupMember -SID 'S-1-5-32-544' -ErrorAction Stop | ForEach-Object { $_.SID.Value }) } catch { }
+    return ($admins -contains $owner)
+}
+
+function Initialize-SecureDir {
+    <# Makes $Path a real folder owned by an administrator and locked to Administrators + SYSTEM.
+       A link or a student-made folder is renamed aside (renaming never follows a link, nothing is deleted)
+       and a fresh folder is created WITH the locked ACL, so there is no gap between create and lock.
+       An administrator-owned folder cannot be renamed or deleted by a student, so it is safe to re-lock in place. #>
+    param([string] $Path)
+    $isLink = { ([IO.File]::GetAttributes($Path) -band [IO.FileAttributes]::ReparsePoint) -ne 0 }
+    $exists = $true; try { [void][IO.File]::GetAttributes($Path) } catch { $exists = $false }   # GetAttributes does not follow links
+    if ($exists -and ((& $isLink) -or -not (Test-TrustedOwner $Path))) {
+        $aside = "$Path.untrusted-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+        [IO.Directory]::Move($Path, $aside)
+        Write-Warning "$Path was not created by an administrator (or is a link): moved to $aside"
+        $exists = $false
+    }
+    if ($exists) {
+        Set-Acl -LiteralPath $Path -AclObject (New-LockedDirSecurity) -ErrorAction Stop
+    } elseif ($PSVersionTable.PSEdition -eq 'Core') {
+        [void][IO.FileSystemAclExtensions]::Create([IO.DirectoryInfo]::new($Path), (New-LockedDirSecurity))
+    } else {
+        [void][IO.Directory]::CreateDirectory($Path, (New-LockedDirSecurity))
+    }
+    # final check: a student racing us (re-creating the folder or a link right after the rename) ends here
+    if ((& $isLink) -or -not (Test-TrustedOwner $Path)) { throw "$Path could not be secured (link or not owned by an administrator)." }
+}
+
+function Initialize-LogDir {
+    <# The task runs as SYSTEM and writes last-run.log here. After the folder is secured nobody but admins can add
+       anything to it, but a file or link planted earlier may still sit at the log path: remove it without
+       following it, and refuse to log if anything is still there. #>
+    Initialize-SecureDir $LogDir
+    $log = "$LogDir\last-run.log"
+    $attr = $null; try { $attr = [IO.File]::GetAttributes($log) } catch { }
+    if ($null -ne $attr) {
+        # Directory.Delete (non-recursive) removes a junction itself; File.Delete removes a file or a file link
+        if ($attr -band [IO.FileAttributes]::Directory) { [IO.Directory]::Delete($log) } else { [IO.File]::Delete($log) }
+    }
+    $left = $true; try { [void][IO.File]::GetAttributes($log) } catch { $left = $false }
+    if ($left) { throw "$log could not be removed." }
 }
 
 function Invoke-GameBlock {

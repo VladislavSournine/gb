@@ -69,7 +69,6 @@ param(
 
 $SidEveryone = 'S-1-1-0'
 $SidAdmins   = 'S-1-5-32-544'
-$SidSystem   = 'S-1-5-18'
 $BackupDir   = "$env:ProgramData\GameBlock"
 
 # publishers too broad to block without a product name (would break Windows / browsers / drivers)
@@ -204,31 +203,62 @@ function Get-RulesText {
     return (Invoke-WebRequest -Uri $RulesUrl -UseBasicParsing -ErrorAction Stop).Content
 }
 
-function Initialize-BackupDir {
-    <# Creates the backup folder and locks it to Administrators + SYSTEM (owner Administrators, no inherited
-       rights). By default any user may create files under ProgramData, so without this a student could plant
-       a "backup" with an allow-everything policy and wait for -Undo. #>
-    New-Item -ItemType Directory -Path $BackupDir -Force | Out-Null
-    # a junction planted by a student would make Set-Acl lock (and our files land in) some other folder
-    if ((Get-Item -LiteralPath $BackupDir -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) {
-        throw "$BackupDir is a link (junction/symlink), not a real folder - refusing. Delete it and run again."
-    }
+# --- secure folder: these three functions are kept IDENTICAL in block-apps.ps1 and block-games.ps1
+#     (each script runs standalone via irm; tests/apps.tests.ps1 checks the copies match).
+#     By default any user may create folders under ProgramData, so a student could pre-create ours,
+#     plant files or swap it for a junction pointing elsewhere.
+
+function New-LockedDirSecurity {
+    <# Administrators + SYSTEM full control, nothing inherited from ProgramData, owner Administrators. #>
     $acl = [Security.AccessControl.DirectorySecurity]::new()
     $acl.SetAccessRuleProtection($true, $false)
-    foreach ($sid in $SidAdmins, $SidSystem) {
+    foreach ($sid in 'S-1-5-32-544', 'S-1-5-18') {
         $acl.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new(
             [Security.Principal.SecurityIdentifier]::new($sid), 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow'))
     }
-    $acl.SetOwner([Security.Principal.SecurityIdentifier]::new($SidAdmins))
-    Set-Acl -LiteralPath $BackupDir -AclObject $acl -ErrorAction Stop
+    $acl.SetOwner([Security.Principal.SecurityIdentifier]::new('S-1-5-32-544'))
+    return $acl
 }
 
 function Test-TrustedOwner {
-    <# True when the file was created by an administrator: owner is Administrators, SYSTEM or the admin running now.
-       Files a student put into the folder before it was locked keep the student as owner. #>
+    <# True when an administrator owns the file/folder: Administrators, SYSTEM, the admin running now, or any member
+       of the local Administrators group (Windows makes the teacher's own account the owner of what they create). #>
     param([string] $Path)
     $owner = (Get-Acl -LiteralPath $Path).GetOwner([Security.Principal.SecurityIdentifier]).Value
-    return $owner -in @($SidAdmins, $SidSystem, [Security.Principal.WindowsIdentity]::GetCurrent().User.Value)
+    if ($owner -in @('S-1-5-32-544', 'S-1-5-18', [Security.Principal.WindowsIdentity]::GetCurrent().User.Value)) { return $true }
+    # not available in 32-bit PowerShell, fails on groups with orphaned SIDs: then only the SIDs above count
+    $admins = @(); try { $admins = @(Get-LocalGroupMember -SID 'S-1-5-32-544' -ErrorAction Stop | ForEach-Object { $_.SID.Value }) } catch { }
+    return ($admins -contains $owner)
+}
+
+function Initialize-SecureDir {
+    <# Makes $Path a real folder owned by an administrator and locked to Administrators + SYSTEM.
+       A link or a student-made folder is renamed aside (renaming never follows a link, nothing is deleted)
+       and a fresh folder is created WITH the locked ACL, so there is no gap between create and lock.
+       An administrator-owned folder cannot be renamed or deleted by a student, so it is safe to re-lock in place. #>
+    param([string] $Path)
+    $isLink = { ([IO.File]::GetAttributes($Path) -band [IO.FileAttributes]::ReparsePoint) -ne 0 }
+    $exists = $true; try { [void][IO.File]::GetAttributes($Path) } catch { $exists = $false }   # GetAttributes does not follow links
+    if ($exists -and ((& $isLink) -or -not (Test-TrustedOwner $Path))) {
+        $aside = "$Path.untrusted-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+        [IO.Directory]::Move($Path, $aside)
+        Write-Warning "$Path was not created by an administrator (or is a link): moved to $aside"
+        $exists = $false
+    }
+    if ($exists) {
+        Set-Acl -LiteralPath $Path -AclObject (New-LockedDirSecurity) -ErrorAction Stop
+    } elseif ($PSVersionTable.PSEdition -eq 'Core') {
+        [void][IO.FileSystemAclExtensions]::Create([IO.DirectoryInfo]::new($Path), (New-LockedDirSecurity))
+    } else {
+        [void][IO.Directory]::CreateDirectory($Path, (New-LockedDirSecurity))
+    }
+    # final check: a student racing us (re-creating the folder or a link right after the rename) ends here
+    if ((& $isLink) -or -not (Test-TrustedOwner $Path)) { throw "$Path could not be secured (link or not owned by an administrator)." }
+}
+
+function Initialize-BackupDir {
+    <# Without a locked folder a student could plant a "backup" with an allow-everything policy and wait for -Undo. #>
+    Initialize-SecureDir $BackupDir
 }
 
 function Set-LocalPolicy {

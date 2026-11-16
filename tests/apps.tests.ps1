@@ -193,6 +193,17 @@ foreach ($case in @(@('missing file', "$bk/missing.xml"), @('not xml', "$bk/bad.
 }
 Remove-Item -Recurse -Force $bk
 
+# --- secure-folder helpers are copied into both scripts (each runs standalone via irm): copies must not drift
+function Get-FunctionText([string] $File, [string] $Name) {
+    $ast = [System.Management.Automation.Language.Parser]::ParseFile($File, [ref]$null, [ref]$null)
+    $f = $ast.Find({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq $Name }, $true)
+    if ($f) { return $f.Extent.Text } else { return "<missing $Name in $File>" }
+}
+foreach ($fn in 'New-LockedDirSecurity', 'Test-TrustedOwner', 'Initialize-SecureDir') {
+    Assert-Equal "shared: $fn identical in block-apps.ps1 and block-games.ps1" `
+        (Get-FunctionText "$PSScriptRoot/../block-apps.ps1" $fn) (Get-FunctionText "$PSScriptRoot/../block-games.ps1" $fn)
+}
+
 # --- the shipped apps-block.txt is valid
 $shipped = @(Get-Content "$PSScriptRoot/../apps-block.txt" | ForEach-Object { ConvertFrom-RuleLine $_ } | Where-Object { $_ })
 Assert-Equal 'apps-block.txt: no invalid lines' 0 @($shipped | Where-Object { $_.Error }).Count
