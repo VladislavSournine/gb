@@ -1,0 +1,43 @@
+# Програми, які block-apps.ps1 блокує через AppLocker.
+# Один рядок = одне правило. Рядки з # ігноруються.
+#
+#   path: <шлях>\*                         — усе в папці (працює і для непідписаних програм)
+#   publisher: <O=..., C=..> | <продукт>   — усе, що підписав цей видавець (продукт * = будь-який)
+#   appx: <видавець> | <ім'я пакета>       — програма з Microsoft Store
+#   allow: <шлях>\*                        — ДОЗВОЛИТИ папку (діє лише з -Strict)
+#
+# %OSDRIVE% = C:, %PROGRAMFILES% = обидві Program Files (звичайна і x86).
+# Users\* = будь-який користувач.
+# Нові рядки для своїх комп'ютерів бери з файлів apps-block-<ПК>.txt, які робить find-games.ps1.
+
+# --- Roblox ---
+path: %OSDRIVE%\Users\*\AppData\Local\Roblox\*
+path: %PROGRAMFILES%\Roblox\*
+
+# --- Minecraft Java, TLauncher (Minecraft Education НЕ блокується) ---
+path: %OSDRIVE%\Users\*\AppData\Roaming\.minecraft\*
+path: %OSDRIVE%\Users\*\AppData\Roaming\.tlauncher\*
+path: %PROGRAMFILES%\Minecraft Launcher\*
+appx: CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US | Microsoft.MinecraftUWP
+
+# --- Лаунчери ігор ---
+path: %PROGRAMFILES%\Steam\*
+path: %PROGRAMFILES%\Epic Games\*
+path: %OSDRIVE%\Riot Games\*
+path: %PROGRAMFILES%\Riot Vanguard\*
+path: %PROGRAMFILES%\Electronic Arts\*
+path: %PROGRAMFILES%\Ubisoft\*
+path: %PROGRAMFILES%\Battle.net\*
+path: %OSDRIVE%\XboxGames\*
+
+# --- Розкоментуй, якщо треба (прибери # на початку) ---
+# path: %OSDRIVE%\Users\*\AppData\Local\Discord\*
+# path: %OSDRIVE%\Users\*\AppData\Roaming\Telegram Desktop\*
+# appx: CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US | Microsoft.MicrosoftSolitaireCollection
+
+# --- Дозволи для режиму -Strict (у звичайному режимі ці рядки ні на що не впливають) ---
+# Unity Editor і Unity Hub стоять у Program Files, тому працюють і так. А от учнівські збірки
+# (Build\гра.exe) лежать у профілі, і без allow: -Strict їх заблокує. Тримайте проєкти в одній папці:
+allow: %OSDRIVE%\Users\*\Documents\UnityProjects\*
+# VS Code, встановлений «для користувача»:
+allow: %OSDRIVE%\Users\*\AppData\Local\Programs\Microsoft VS Code\*
