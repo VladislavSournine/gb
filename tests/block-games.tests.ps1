@@ -61,6 +61,14 @@ Assert-Equal 'allow: list lines are cleaned'      @('0.0.0.0 a.com') `
     (Get-BlockEntries -Lines @('a.com', 'b.com') -Allow @('# comment', '', 'HTTPS://B.com/') -NoWww)
 Assert-Equal 'allow: empty allow list'            @('0.0.0.0 a.com') (Get-BlockEntries -Lines @('a.com') -Allow @() -NoWww)
 
+# --- hosts lines: 9 names per line (Windows DNS Client hangs on ~90k one-name lines)
+$ten = 1..10 | ForEach-Object { "0.0.0.0 d$_.com" }
+Assert-Equal '9 names per line'      @('0.0.0.0 d1.com d2.com d3.com d4.com d5.com d6.com d7.com d8.com d9.com', '0.0.0.0 d10.com') (ConvertTo-HostsLines $ten)
+Assert-Equal 'single entry'          @('0.0.0.0 a.com') (ConvertTo-HostsLines @('0.0.0.0 a.com'))
+Assert-Equal 'no entries'            0 (ConvertTo-HostsLines @()).Length
+Assert-Equal 'old one-per-line differs' $false (Test-SameEntries (Get-BlockSectionEntries (Add-BlockSection $original $ten 'x')) (ConvertTo-HostsLines $ten))
+Assert-Equal 'packed reads back same'  $true  (Test-SameEntries (Get-BlockSectionEntries (Add-BlockSection $original (ConvertTo-HostsLines $ten) 'x')) (ConvertTo-HostsLines $ten))
+
 # --- scheduled task command ---
 $taskCmd = Get-TaskCommand 'https://example.org/s.ps1'
 Assert-Equal 'task cmd passes -FromTask'      $true ($taskCmd.EndsWith('-FromTask'))

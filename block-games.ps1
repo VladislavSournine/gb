@@ -144,6 +144,18 @@ function Get-BlockSectionEntries {
     return ,$out.ToArray()
 }
 
+function ConvertTo-HostsLines {
+    <# "0.0.0.0 a" entries -> "0.0.0.0 a b c ..." lines, 9 names per line (the most Windows reads from one line).
+       ~90k one-name lines make the Windows DNS Client service hang; 9x fewer lines block the same names. #>
+    param([string[]] $Entries)
+    $out = [System.Collections.Generic.List[string]]::new()
+    for ($i = 0; $i -lt $Entries.Length; $i += 9) {
+        $names = for ($j = $i; $j -lt [Math]::Min($i + 9, $Entries.Length); $j++) { $Entries[$j].Substring(8) }
+        $out.Add('0.0.0.0 ' + ($names -join ' '))
+    }
+    return ,$out.ToArray()
+}
+
 function Test-SameEntries {
     param([string[]] $A, [string[]] $B)
     if ($A.Length -ne $B.Length) { return $false }
@@ -357,10 +369,11 @@ function Invoke-GameBlock {
         throw "Only $($entries.Count) domains parsed - list looks broken, hosts file left unchanged."
     }
 
-    if (Test-SameEntries (Get-BlockSectionEntries $current) $entries) {
+    $hostsLines = ConvertTo-HostsLines $entries
+    if (Test-SameEntries (Get-BlockSectionEntries $current) $hostsLines) {
         Write-Host "Block list unchanged ($($entries.Count) host names), hosts not rewritten."
     } else {
-        Write-HostsFile -Path $HostsPath -Lines (Add-BlockSection $current $entries $ListUrl)
+        Write-HostsFile -Path $HostsPath -Lines (Add-BlockSection $current $hostsLines $ListUrl)
         ipconfig /flushdns | Out-Null
         Write-Host "Blocked $($entries.Count) host names." -ForegroundColor Green
     }
