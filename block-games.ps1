@@ -154,9 +154,10 @@ function Add-BlockSection {
 }
 
 function Get-TaskCommand {
-    <# The command the scheduled task runs: always fetches the latest script from GitHub. #>
+    <# The command the scheduled task runs: always fetches the latest script from GitHub.
+       PS 5.1 on some PCs doesn't offer TLS 1.2 by default and GitHub closes the connection. #>
     param([string] $Url)
-    return "& ([scriptblock]::Create((Invoke-RestMethod -UseBasicParsing '$Url'))) -FromTask"
+    return "[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; & ([scriptblock]::Create((Invoke-RestMethod -UseBasicParsing '$Url'))) -FromTask"
 }
 
 function Install-GameBlockTask {

@@ -59,6 +59,7 @@ $taskCmd = Get-TaskCommand 'https://example.org/s.ps1'
 Assert-Equal 'task cmd passes -FromTask'      $true ($taskCmd.EndsWith('-FromTask'))
 Assert-Equal 'task cmd has no double quotes'  $false ($taskCmd.Contains('"'))
 Assert-Equal 'task cmd parses'                $true ([bool][scriptblock]::Create($taskCmd))
+Assert-Equal 'task cmd enables TLS 1.2 first'  $true ($taskCmd.StartsWith('[Net.ServicePointManager]::SecurityProtocol = ''Tls12''; '))
 
 # --- custom-block.txt in repo ---
 $custom = Get-BlockEntries -Lines (Get-Content "$PSScriptRoot/../custom-block.txt")

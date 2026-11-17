@@ -15,7 +15,7 @@
 
 **Один раз на кожному ПК** (PowerShell від адміністратора):
 
-1. `irm https://raw.githubusercontent.com/VladislavSournine/gb/main/install-gb.ps1 | iex` встановлює команду `gb`.
+1. `[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; irm https://raw.githubusercontent.com/VladislavSournine/gb/main/install-gb.ps1 | iex` встановлює команду `gb`.
 2. `gb sites` блокує сайти. Далі список сайтів оновлюється сам.
 3. `gb apps -AuditOnly`, потім `gb apps` блокують програми ([AppLocker](#блокування-програм-applocker)).
 
@@ -32,7 +32,7 @@
 Щоб не вставляти щоразу довгі команди, один раз на кожному ПК встанови `gb` (PowerShell від адміністратора):
 
 ```powershell
-irm https://raw.githubusercontent.com/VladislavSournine/gb/main/install-gb.ps1 | iex
+[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; irm https://raw.githubusercontent.com/VladislavSournine/gb/main/install-gb.ps1 | iex
 ```
 
 Далі в будь-якому вікні PowerShell від адміністратора:
@@ -61,9 +61,9 @@ irm https://raw.githubusercontent.com/VladislavSournine/gb/main/install-gb.ps1 |
 
 | Що відкотити | З `gb` | Без `gb` (PowerShell від адміністратора) |
 |---|---|---|
-| Блокування сайтів, задачу й політики браузерів | `gb sites -Remove` | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/VladislavSournine/gb/main/block-games.ps1))) -Remove` |
-| AppLocker: повернути стан до останнього запуску | `gb apps -Undo` | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/VladislavSournine/gb/main/block-apps.ps1))) -Undo` |
-| AppLocker: вимкнути всі правила | `gb apps -Remove` | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/VladislavSournine/gb/main/block-apps.ps1))) -Remove` |
+| Блокування сайтів, задачу й політики браузерів | `gb sites -Remove` | `[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; & ([scriptblock]::Create((irm https://raw.githubusercontent.com/VladislavSournine/gb/main/block-games.ps1))) -Remove` |
+| AppLocker: повернути стан до останнього запуску | `gb apps -Undo` | `[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; & ([scriptblock]::Create((irm https://raw.githubusercontent.com/VladislavSournine/gb/main/block-apps.ps1))) -Undo` |
+| AppLocker: вимкнути всі правила | `gb apps -Remove` | `[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; & ([scriptblock]::Create((irm https://raw.githubusercontent.com/VladislavSournine/gb/main/block-apps.ps1))) -Remove` |
 
 Подробиці у розділі [Відкат AppLocker](#відкат-applocker).
 
@@ -73,7 +73,7 @@ irm https://raw.githubusercontent.com/VladislavSournine/gb/main/install-gb.ps1 |
 2. Встав команду (або `gb sites`, якщо `gb` встановлено):
 
    ```powershell
-   irm https://raw.githubusercontent.com/VladislavSournine/gb/main/block-games.ps1 | iex
+   [Net.ServicePointManager]::SecurityProtocol = 'Tls12'; irm https://raw.githubusercontent.com/VladislavSournine/gb/main/block-games.ps1 | iex
    ```
 
 3. Зачекай, доки з'явиться зелений рядок `Done. Restart browsers to apply.`
@@ -147,7 +147,7 @@ $url = 'https://raw.githubusercontent.com/VladislavSournine/gb/main/block-games.
 ## 1. Знайти ігри: `find-games.ps1`
 
 ```powershell
-irm https://raw.githubusercontent.com/VladislavSournine/gb/main/find-games.ps1 | iex
+[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; irm https://raw.githubusercontent.com/VladislavSournine/gb/main/find-games.ps1 | iex
 ```
 
 Скрипт нічого не змінює на комп'ютері, тільки шукає. Він перевіряє профілі всіх учнів (AppData, Робочий стіл, Завантаження, Документи), Program Files, папки `Games`/`SteamLibrary`/`Riot Games` на всіх дисках і програми з Microsoft Store.
@@ -168,7 +168,7 @@ irm https://raw.githubusercontent.com/VladislavSournine/gb/main/find-games.ps1 |
 - `-Pick` — відкрити вікно зі списком і позначити, що саме блокувати.
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/VladislavSournine/gb/main/find-games.ps1))) -OutDir E:\ -All
+[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; & ([scriptblock]::Create((irm https://raw.githubusercontent.com/VladislavSournine/gb/main/find-games.ps1))) -OutDir E:\ -All
 ```
 
 ## 2. Список блокування: `apps-block.txt`
@@ -249,7 +249,7 @@ $u = 'https://raw.githubusercontent.com/VladislavSournine/gb/main/block-apps.ps1
 Коли все гаразд, вмикай блокування:
 
 ```powershell
-irm https://raw.githubusercontent.com/VladislavSournine/gb/main/block-apps.ps1 | iex
+[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; irm https://raw.githubusercontent.com/VladislavSournine/gb/main/block-apps.ps1 | iex
 ```
 
 | Режим | Що відбувається |
