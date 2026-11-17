@@ -39,6 +39,9 @@ games.roblox.com
 igru.com.ua
 ufra.com.ua
 crazygames.com.ua
+retakes.io
+playgama.com
+app.cinevva.com
 
 # --- Хмарні ігри: Roblox і Minecraft прямо в браузері ---
 easyfun.gg
