@@ -54,6 +54,13 @@ Assert-Equal 'no section -> empty'        0      (Get-BlockSectionEntries $origi
 Assert-Equal 'fast/slow path equal' (Get-BlockEntries -Lines @('friv.com')) (Get-BlockEntries -Lines @('  HTTPS://FRIV.com/ '))
 Assert-Equal 'ordinal sort'         @('0.0.0.0 a-b.com', '0.0.0.0 ab.com') (Get-BlockEntries -Lines @('ab.com', 'a-b.com') -NoWww)
 
+# --- allow list: the domain and all its subdomains stay open, look-alikes are still blocked
+Assert-Equal 'allow: domain + subdomains skipped' @('0.0.0.0 notyoutube.com', '0.0.0.0 www.notyoutube.com') `
+    (Get-BlockEntries -Lines @('youtube.com', 'm.youtube.com', 'www.youtube.com', 'notyoutube.com') -Allow @('youtube.com'))
+Assert-Equal 'allow: list lines are cleaned'      @('0.0.0.0 a.com') `
+    (Get-BlockEntries -Lines @('a.com', 'b.com') -Allow @('# comment', '', 'HTTPS://B.com/') -NoWww)
+Assert-Equal 'allow: empty allow list'            @('0.0.0.0 a.com') (Get-BlockEntries -Lines @('a.com') -Allow @() -NoWww)
+
 # --- scheduled task command ---
 $taskCmd = Get-TaskCommand 'https://example.org/s.ps1'
 Assert-Equal 'task cmd passes -FromTask'      $true ($taskCmd.EndsWith('-FromTask'))

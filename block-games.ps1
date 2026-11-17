@@ -18,6 +18,12 @@
 
 .PARAMETER ListUrl
     One or more URLs of plain-text lists, one domain per line. Lines starting with # are ignored.
+    Default: UT1 categories games, audio-video (streams, video, music), vpn, social_networks, manga,
+    plus custom-block.txt.
+
+.PARAMETER AllowUrl
+    URL of a list of domains that are never blocked, together with all their subdomains
+    (default: allow-sites.txt from the repo, e.g. YouTube). Empty string = no exceptions.
 
 .PARAMETER Extra
     Additional domains to block on top of the lists, e.g. -Extra roblox.com,epicgames.com
@@ -50,8 +56,13 @@
 param(
     [string[]] $ListUrl   = @(
         'https://raw.githubusercontent.com/olbat/ut1-blacklists/master/blacklists/games/domains',
+        'https://raw.githubusercontent.com/olbat/ut1-blacklists/master/blacklists/audio-video/domains',
+        'https://raw.githubusercontent.com/olbat/ut1-blacklists/master/blacklists/vpn/domains',
+        'https://raw.githubusercontent.com/olbat/ut1-blacklists/master/blacklists/social_networks/domains',
+        'https://raw.githubusercontent.com/olbat/ut1-blacklists/master/blacklists/manga/domains',
         'https://raw.githubusercontent.com/VladislavSournine/gb/main/custom-block.txt'
     ),
+    [string]   $AllowUrl  = 'https://raw.githubusercontent.com/VladislavSournine/gb/main/allow-sites.txt',
     [string[]] $Extra     = @(),
     [switch]   $Remove,
     [switch]   $NoAutoUpdate,
@@ -87,15 +98,29 @@ function ConvertTo-CleanDomain {
     return $d
 }
 
+function Test-Allowed {
+    <# True when $Domain or any parent domain of it is in $AllowSet (m.youtube.com -> youtube.com). #>
+    param([string] $Domain, [System.Collections.Generic.HashSet[string]] $AllowSet)
+    $d = $Domain
+    while ($true) {
+        if ($AllowSet.Contains($d)) { return $true }
+        $dot = $d.IndexOf('.'); if ($dot -lt 0) { return $false }
+        $d = $d.Substring($dot + 1)
+    }
+}
+
 function Get-BlockEntries {
     <# Turns raw list lines into sorted, de-duplicated "0.0.0.0 domain" hosts lines.
        No pipelines on purpose: Windows PowerShell 5.1 is slow with them on ~70k items. #>
-    param([string[]] $Lines, [switch] $NoWww)
+    param([string[]] $Lines, [string[]] $Allow = @(), [switch] $NoWww)
+    $allowSet = [System.Collections.Generic.HashSet[string]]::new()
+    foreach ($a in $Allow) { $c = ConvertTo-CleanDomain $a; if ($c) { [void]$allowSet.Add($c) } }
     $set = [System.Collections.Generic.HashSet[string]]::new()
     foreach ($line in $Lines) {
         # fast path: most lines are already clean lower-case domains
         if ($CleanDomainRegex.IsMatch($line) -and -not $IpRegex.IsMatch($line)) { $d = $line }
         else { $d = ConvertTo-CleanDomain $line; if (-not $d) { continue } }
+        if ($allowSet.Count -and (Test-Allowed $d $allowSet)) { continue }
         [void]$set.Add($d)
         if (-not $NoWww -and -not $d.StartsWith('www.')) { [void]$set.Add("www.$d") }
     }
@@ -318,9 +343,14 @@ function Invoke-GameBlock {
         $lines.AddRange([string[]]((Get-ListText -Url $url -Attempts $attempts) -split "`r?`n"))
     }
     $lines.AddRange([string[]]$Extra)
+    $allow = @()
+    if ($AllowUrl) {
+        Write-Host "Downloading exceptions: $AllowUrl"
+        $allow = (Get-ListText -Url $AllowUrl -Attempts $attempts) -split "`r?`n"
+    }
 
     Write-Host 'Processing...'
-    $entries = Get-BlockEntries -Lines $lines.ToArray() -NoWww:$NoWww
+    $entries = Get-BlockEntries -Lines $lines.ToArray() -Allow $allow -NoWww:$NoWww
     if ($entries.Count -lt $MinExpectedDomains) {
         throw "Only $($entries.Count) domains parsed - list looks broken, hosts file left unchanged."
     }

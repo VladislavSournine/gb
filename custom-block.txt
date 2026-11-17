@@ -43,6 +43,37 @@ crazygames.com.ua
 # --- Хмарні ігри: Roblox і Minecraft прямо в браузері ---
 easyfun.gg
 
+# --- Стріми, яких немає в основному списку ---
+kick.com
+vkvideo.ru
+
+# --- Серіали, фільми, аніме онлайн (українські й російськомовні) ---
+rezka.ag
+hdrezka.ag
+hdrezka.me
+hdrezka.website
+uakino.club
+uakino.me
+uakino.best
+uaserials.pro
+uaserial.tv
+uaserials.com
+eneyida.tv
+uafix.net
+kinoukr.com
+kinogo.biz
+kinotochka.co
+filmix.ac
+takflix.com
+sweet.tv
+kyivstar.tv
+1plus1.video
+anitube.in.ua
+animeon.club
+yummyanime.tv
+jut.su
+animego.org
+
 # --- Розкоментуй, якщо треба (прибери # на початку рядка) ---
 # youtube.com
 # m.youtube.com
