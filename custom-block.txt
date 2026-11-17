@@ -107,6 +107,51 @@ animeon.club
 yummyanime.tv
 jut.su
 animego.org
+serialytut.me
+serialno.tv
+lordserial.run
+lordfilm.lu
+kinokrad.cc
+baskino.me
+hdrezka.co
+uaserials.my
+seasonvar.ru
+kinopoisk.ru
+
+# --- Ставки на спорт і онлайн-казино (українські й найпопулярніші).
+#     Повну категорію UT1 gambling (48 тис. доменів) не підключаємо: вона подвоїла б hosts. ---
+betking.com.ua
+favbet.ua
+favbet.com
+parimatch.ua
+parimatch.com
+pm.ua
+vbet.ua
+vbet.com
+ggbet.ua
+ggbet.com
+pin-up.ua
+pin-up.bet
+cosmolot.ua
+slotscity.ua
+first.ua
+777.ua
+supergra.ua
+1win.com
+1xbet.com
+betandyou.com
+mostbet.com
+melbet.com
+betwinner.com
+22bet.com
+spinbetter.com
+fonbet.ru
+leon.ru
+marathonbet.com
+bet365.com
+williamhill.com
+betsson.com
+pokerstars.ua
 
 # --- Розкоментуй, якщо треба (прибери # на початку рядка) ---
 # discord.com
