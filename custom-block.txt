@@ -43,6 +43,13 @@ crazygames.com.ua
 # --- Хмарні ігри: Roblox і Minecraft прямо в браузері ---
 easyfun.gg
 
+# --- YouTube (youtube.com є і в UT1; тут піддомени, яких там немає) ---
+youtube.com
+m.youtube.com
+music.youtube.com
+youtu.be
+youtube-nocookie.com
+
 # --- Стріми, яких немає в основному списку ---
 kick.com
 vkvideo.ru
@@ -75,9 +82,6 @@ jut.su
 animego.org
 
 # --- Розкоментуй, якщо треба (прибери # на початку рядка) ---
-# youtube.com
-# m.youtube.com
-# youtu.be
 # discord.com
 # discord.gg
 # discordapp.com

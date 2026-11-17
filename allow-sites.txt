@@ -3,7 +3,7 @@
 # youtube.com відкриває і www.youtube.com, і m.youtube.com.
 # Щоб заблокувати сайт звідси, прибери рядок або постав # на початку.
 
-# --- YouTube (сайт і сервер, з якого йде відео) ---
-youtube.com
-youtu.be
-googlevideo.com
+# --- YouTube: щоб знову відкрити, прибери # у трьох рядках нижче ---
+# youtube.com
+# youtu.be
+# googlevideo.com
