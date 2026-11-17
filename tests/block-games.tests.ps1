@@ -72,7 +72,7 @@ Assert-Equal 'task cmd enables TLS 1.2 first'  $true ($taskCmd.StartsWith('[Net.
 $custom = Get-BlockEntries -Lines (Get-Content "$PSScriptRoot/../custom-block.txt")
 Assert-Equal 'custom: tiktok blocked'      $true  ($custom -contains '0.0.0.0 tiktok.com')
 Assert-Equal 'custom: www.instagram added' $true  ($custom -contains '0.0.0.0 www.instagram.com')
-Assert-Equal 'custom: commented ignored'   $false ($custom -contains '0.0.0.0 youtube.com')
+Assert-Equal 'custom: commented ignored'   $false ($custom -contains '0.0.0.0 discord.com')
 Assert-Equal 'custom: all lines valid'     0 (@(Get-Content "$PSScriptRoot/../custom-block.txt" |
     Where-Object { $_.Trim() -and -not $_.Trim().StartsWith('#') -and -not (ConvertTo-CleanDomain $_) }).Count)
 
