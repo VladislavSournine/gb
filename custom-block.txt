@@ -42,6 +42,11 @@ crazygames.com.ua
 retakes.io
 playgama.com
 app.cinevva.com
+# y8.com: мовні версії — окремі піддомени
+y8.com
+uk.y8.com
+ru.y8.com
+en.y8.com
 
 # --- Хмарні ігри: Roblox і Minecraft прямо в браузері ---
 easyfun.gg
