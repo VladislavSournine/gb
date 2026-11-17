@@ -70,6 +70,18 @@ badlion.net
 cdn.modrinth.com
 mediafilez.forgecdn.net
 
+# --- World of Tanks (і Blitz, і «Мир танков» від Lesta) ---
+worldoftanks.eu
+worldoftanks.com
+worldoftanks.asia
+wargaming.net
+eu.wargaming.net
+wotblitz.com
+wotblitz.eu
+tanki.su
+lesta.ru
+tanksblitz.ru
+
 # --- YouTube (youtube.com є і в UT1; тут піддомени, яких там немає) ---
 youtube.com
 m.youtube.com

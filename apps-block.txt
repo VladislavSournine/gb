@@ -30,6 +30,15 @@ path: %PROGRAMFILES%\Ubisoft\*
 path: %PROGRAMFILES%\Battle.net\*
 path: %OSDRIVE%\XboxGames\*
 
+# --- World of Tanks: Wargaming Game Center, Lesta Game Center («Мир танков») і стандартні теки гри ---
+path: %OSDRIVE%\ProgramData\Wargaming.net\*
+path: %OSDRIVE%\ProgramData\Lesta\*
+path: %OSDRIVE%\Games\World_of_Tanks_EU\*
+path: %OSDRIVE%\Games\World_of_Tanks\*
+path: %OSDRIVE%\Games\Tanki\*
+path: %OSDRIVE%\Users\*\wgc.exe
+path: %OSDRIVE%\Users\*\WorldOfTanks.exe
+
 # --- Додаткові блокування DESKTOP-B37TR6S ---
 
 # Roblox — всі підписані застосунки Roblox
