@@ -348,7 +348,8 @@ function Invoke-FindGames {
         if ($rows.Count -eq 0) { Write-Host 'Nothing selected.'; return }
     }
 
-    New-Item -ItemType Directory -Path $OutDir -Force | Out-Null
+    # Windows PowerShell can't "create" a drive root like D:\ even with -Force
+    if (-not (Test-Path -LiteralPath $OutDir)) { New-Item -ItemType Directory -Path $OutDir | Out-Null }
     $csv   = Join-Path $OutDir "games-$env:COMPUTERNAME.csv"
     $rules = Join-Path $OutDir "apps-block-$env:COMPUTERNAME.txt"
     ConvertTo-CsvSafe $rows | Export-Csv -Path $csv -NoTypeInformation -Encoding UTF8
