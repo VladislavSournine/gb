@@ -57,6 +57,18 @@ llaun.ch
 legacylauncher.ru
 sklauncher.com
 eaglercraft.dev
+# інші лаунчери й клієнти (modrinth, curseforge, multimc, feathermc вже є в UT1)
+gdlauncher.com
+prismlauncher.org
+polymc.org
+atlauncher.com
+technicpack.net
+ftb.team
+lunarclient.com
+badlion.net
+# сервери, з яких лаунчери качають моди й модпаки
+cdn.modrinth.com
+mediafilez.forgecdn.net
 
 # --- YouTube (youtube.com є і в UT1; тут піддомени, яких там немає) ---
 youtube.com
