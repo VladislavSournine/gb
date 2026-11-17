@@ -198,7 +198,7 @@ function Read-PolicyBackup {
 
 function Get-RulesText {
     if ($RulesFile) { return [IO.File]::ReadAllText((Resolve-Path $RulesFile)) }
-    Write-Host "Downloading rules: $RulesUrl"
+    Write-Host "$(Get-Date -Format HH:mm:ss) Downloading rules: $RulesUrl"
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     return (Invoke-WebRequest -Uri $RulesUrl -UseBasicParsing -ErrorAction Stop).Content
 }
@@ -290,8 +290,10 @@ function Invoke-BlockApps {
     $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
         [Security.Principal.WindowsBuiltInRole]::Administrator)
     if (-not $isAdmin) { throw 'Run PowerShell as Administrator.' }
+    Write-Host "$(Get-Date -Format HH:mm:ss) Script downloaded, checking Windows edition..."
     $os = (Get-CimInstance Win32_OperatingSystem).Caption
     if ($os -match 'Home') { throw "AppLocker is not available on $os (needs Pro, Education or Enterprise)." }
+    Write-Host "$(Get-Date -Format HH:mm:ss) Securing backup folder..."
     Initialize-BackupDir
 
     if ($Remove) {
@@ -324,11 +326,12 @@ function Invoke-BlockApps {
     if (@($rules | Where-Object { $_.Type -ne 'allow' }).Count -eq 0 -and -not $Strict) { throw 'No valid rules in the list - nothing to block.' }
 
     $xml = New-AppLockerPolicyXml -Rules $rules -Strict:$Strict -AuditOnly:$AuditOnly
-    Write-Host 'Applying AppLocker policy...'
+    Write-Host "$(Get-Date -Format HH:mm:ss) Applying AppLocker policy..."
     Set-LocalPolicy -Xml $xml
-    Write-Host 'Starting Application Identity service...'
+    Write-Host "$(Get-Date -Format HH:mm:ss) Starting Application Identity service..."
     Enable-AppIdService
     # /wait:0 - the refresh finishes in the background; the rules above already apply
+    Write-Host "$(Get-Date -Format HH:mm:ss) Refreshing group policy..."
     gpupdate /target:computer /force /wait:0 | Out-Null
 
     $what = 'Deny list'; if ($Strict) { $what = 'Strict (only Windows + Program Files)' }
