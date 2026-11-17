@@ -325,7 +325,9 @@ function Invoke-GameBlock {
 
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     $ProgressPreference = 'SilentlyContinue'   # the progress bar makes Invoke-WebRequest much slower in 5.1
+    Write-Host "$(Get-Date -Format HH:mm:ss) Script downloaded, reading hosts file..."
     $current = @(Get-Content -Path $HostsPath -ErrorAction Stop)
+    Write-Host "$(Get-Date -Format HH:mm:ss) hosts: $($current.Count) lines"
 
     if ($Remove) {
         Uninstall-GameBlockTask
@@ -339,7 +341,7 @@ function Invoke-GameBlock {
     $attempts = 1; if ($FromTask) { $attempts = 10 }
     $lines = [System.Collections.Generic.List[string]]::new()
     foreach ($url in $ListUrl) {
-        Write-Host "Downloading list: $url"
+        Write-Host "$(Get-Date -Format HH:mm:ss) Downloading list: $url"
         $lines.AddRange([string[]]((Get-ListText -Url $url -Attempts $attempts) -split "`r?`n"))
     }
     $lines.AddRange([string[]]$Extra)
@@ -349,7 +351,7 @@ function Invoke-GameBlock {
         $allow = (Get-ListText -Url $AllowUrl -Attempts $attempts) -split "`r?`n"
     }
 
-    Write-Host 'Processing...'
+    Write-Host "$(Get-Date -Format HH:mm:ss) Processing..."
     $entries = Get-BlockEntries -Lines $lines.ToArray() -Allow $allow -NoWww:$NoWww
     if ($entries.Count -lt $MinExpectedDomains) {
         throw "Only $($entries.Count) domains parsed - list looks broken, hosts file left unchanged."
