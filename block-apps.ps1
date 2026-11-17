@@ -324,9 +324,12 @@ function Invoke-BlockApps {
     if (@($rules | Where-Object { $_.Type -ne 'allow' }).Count -eq 0 -and -not $Strict) { throw 'No valid rules in the list - nothing to block.' }
 
     $xml = New-AppLockerPolicyXml -Rules $rules -Strict:$Strict -AuditOnly:$AuditOnly
+    Write-Host 'Applying AppLocker policy...'
     Set-LocalPolicy -Xml $xml
+    Write-Host 'Starting Application Identity service...'
     Enable-AppIdService
-    gpupdate /target:computer /force | Out-Null
+    Write-Host 'Refreshing group policy (gpupdate)...'
+    gpupdate /target:computer /force
 
     $what = 'Deny list'; if ($Strict) { $what = 'Strict (only Windows + Program Files)' }
     $how  = 'ENFORCED'; if ($AuditOnly) { $how = 'AUDIT ONLY (nothing blocked, see Event Viewer > AppLocker)' }
