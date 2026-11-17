@@ -43,6 +43,21 @@ crazygames.com.ua
 # --- Хмарні ігри: Roblox і Minecraft прямо в браузері ---
 easyfun.gg
 
+# --- Minecraft Java: сервери, з яких будь-який лаунчер (і TLauncher) качає гру,
+#     сайти лаунчерів і Minecraft у браузері. minecraft.net, mojang.com, tlauncher.org
+#     вже є в UT1. Minecraft Education ці адреси не використовує. ---
+launcher.mojang.com
+piston-meta.mojang.com
+piston-data.mojang.com
+libraries.minecraft.net
+resources.download.minecraft.net
+classic.minecraft.net
+tlaun.ch
+llaun.ch
+legacylauncher.ru
+sklauncher.com
+eaglercraft.dev
+
 # --- YouTube (youtube.com є і в UT1; тут піддомени, яких там немає) ---
 youtube.com
 m.youtube.com
