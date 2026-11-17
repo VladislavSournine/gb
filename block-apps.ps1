@@ -296,7 +296,7 @@ function Invoke-BlockApps {
 
     if ($Remove) {
         Set-LocalPolicy -Xml (New-EmptyPolicyXml)
-        gpupdate /target:computer /force | Out-Null
+        gpupdate /target:computer /force /wait:0 | Out-Null
         Write-Host 'AppLocker rules removed. Programs can run again.' -ForegroundColor Green
         return
     }
@@ -312,7 +312,7 @@ function Invoke-BlockApps {
         Set-LocalPolicy -Xml (Read-PolicyBackup $file) -BackupPrefix $prefix
         if ($Undo) { Rename-Item -LiteralPath $file -NewName ([IO.Path]::GetFileName($file) -replace '^applocker-backup-', 'applocker-undone-') }
         Enable-AppIdService
-        gpupdate /target:computer /force | Out-Null
+        gpupdate /target:computer /force /wait:0 | Out-Null
         Write-Host "AppLocker policy restored from $file" -ForegroundColor Green
         return
     }
@@ -328,8 +328,8 @@ function Invoke-BlockApps {
     Set-LocalPolicy -Xml $xml
     Write-Host 'Starting Application Identity service...'
     Enable-AppIdService
-    Write-Host 'Refreshing group policy (gpupdate)...'
-    gpupdate /target:computer /force
+    # /wait:0 - the refresh finishes in the background; the rules above already apply
+    gpupdate /target:computer /force /wait:0 | Out-Null
 
     $what = 'Deny list'; if ($Strict) { $what = 'Strict (only Windows + Program Files)' }
     $how  = 'ENFORCED'; if ($AuditOnly) { $how = 'AUDIT ONLY (nothing blocked, see Event Viewer > AppLocker)' }

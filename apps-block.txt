@@ -38,6 +38,9 @@ publisher: O=ROBLOX CORPORATION, L=SAN MATEO, S=CALIFORNIA, C=US | *
 # TLauncher
 publisher: O=TLAUNCHER INC., L=VICTORIA, S=MAHÉ, C=SC | TL
 
+# Realism Launcher (Minecraft) — за назвою файлу в будь-якій теці будь-якого учня
+path: %OSDRIVE%\Users\*\RealismLauncher.exe
+
 # --- Розкоментуй, якщо треба (прибери # на початку) ---
 # path: %OSDRIVE%\Users\*\AppData\Local\Discord\*
 # path: %OSDRIVE%\Users\*\AppData\Roaming\Telegram Desktop\*
