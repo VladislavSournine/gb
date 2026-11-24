@@ -85,6 +85,7 @@ $LogDir      = "$env:ProgramData\GameBlock"
 $MarkerBegin = '# >>> GAME-BLOCK BEGIN (managed by block-games.ps1, do not edit) >>>'
 $MarkerEnd   = '# <<< GAME-BLOCK END <<<'
 $MinExpectedDomains = 100   # sanity check: a broken download must not wipe the existing block
+$TldSinkhole   = '192.0.2.1'   # TEST-NET: nothing answers there (see Set-TldBlock)
 $TldComment    = 'GameBlock'   # tags our NRPT rules, so rules made by anyone else are never touched
 $ProtectedTlds = @('com', 'net', 'org', 'ua', 'edu', 'gov')   # GitHub (auto-update) and Ukrainian sites must keep working
 
@@ -163,11 +164,14 @@ function Set-TldBlock {
        run their own resolver there. An empty list removes our rules. #>
     param([string[]] $Namespaces)
     $ours = @(Get-DnsClientNrptRule | Where-Object { $_.Comment -eq $TldComment })
-    $have = [string[]]@($ours | ForEach-Object { $_.Namespace })
+    # compare zone AND server, so rules made by an older version (127.0.0.1) get replaced too
+    $have = [string[]]@($ours | ForEach-Object { "$($_.Namespace) > $($_.NameServers -join ',')" })
+    $want = [string[]]@($Namespaces | ForEach-Object { "$_ > $TldSinkhole" })
     [Array]::Sort($have, [StringComparer]::Ordinal)
-    if (Test-SameEntries $have $Namespaces) { Write-Host "Blocked zones unchanged: $($Namespaces -join ' ')"; return }
+    [Array]::Sort($want, [StringComparer]::Ordinal)
+    if (Test-SameEntries $have $want) { Write-Host "Blocked zones unchanged: $($Namespaces -join ' ')"; return }
     foreach ($r in $ours) { Remove-DnsClientNrptRule -Name $r.Name -Force }
-    foreach ($ns in $Namespaces) { Add-DnsClientNrptRule -Namespace $ns -NameServers '192.0.2.1' -Comment $TldComment }
+    foreach ($ns in $Namespaces) { Add-DnsClientNrptRule -Namespace $ns -NameServers $TldSinkhole -Comment $TldComment }
     Clear-DnsClientCache
     Write-Host "Blocked zones: $($Namespaces -join ' ')" -ForegroundColor Green
 }
