@@ -308,8 +308,17 @@ function Write-HostsFile {
     if (-not (Test-Path $backup)) { Copy-Item $Path $backup -Force }   # keep the ORIGINAL hosts once
     $tmp = "$Path.tmp"
     [System.IO.File]::WriteAllLines($tmp, $Lines, [System.Text.Encoding]::ASCII)
-    Copy-Item $tmp $Path -Force
-    Remove-Item $tmp -Force
+    # the DNS Client service locks hosts while it re-reads it (after a flush or NRPT change), on slow PCs for minutes
+    try {
+        for ($i = 1; ; $i++) {
+            try { Copy-Item $tmp $Path -Force -ErrorAction Stop; break }
+            catch [System.IO.IOException] {
+                if ($i -ge 30) { throw "hosts is still locked after 60 s (DNS Client busy?), not changed: $($_.Exception.Message)" }
+                if ($i -eq 1) { Write-Host "$(Get-Date -Format HH:mm:ss) hosts is busy (Windows is reading it), waiting..." }
+                Start-Sleep -Seconds 2
+            }
+        }
+    } finally { Remove-Item $tmp -Force -ErrorAction SilentlyContinue }
 }
 
 function Get-ListText {
