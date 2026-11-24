@@ -181,6 +181,7 @@ kinogo.inc
 kinogo.film
 filmix.my
 filmix.fm
+filmix.gg
 lordfilm.ru
 lordfilm.so
 zetflix.online

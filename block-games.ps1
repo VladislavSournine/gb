@@ -158,15 +158,16 @@ function ConvertTo-TldNamespaces {
 }
 
 function Set-TldBlock {
-    <# Makes our NRPT rules match $Namespaces: names in each zone are sent to 127.0.0.1, where no DNS server runs,
-       so no site in the zone opens. An empty list removes our rules. #>
+    <# Makes our NRPT rules match $Namespaces: names in each zone are sent to 192.0.2.1 (TEST-NET, nothing answers there),
+       so no site in the zone opens. Not 127.0.0.1: Windows lets any user listen on local port 53, so a student could
+       run their own resolver there. An empty list removes our rules. #>
     param([string[]] $Namespaces)
     $ours = @(Get-DnsClientNrptRule | Where-Object { $_.Comment -eq $TldComment })
     $have = [string[]]@($ours | ForEach-Object { $_.Namespace })
     [Array]::Sort($have, [StringComparer]::Ordinal)
     if (Test-SameEntries $have $Namespaces) { Write-Host "Blocked zones unchanged: $($Namespaces -join ' ')"; return }
     foreach ($r in $ours) { Remove-DnsClientNrptRule -Name $r.Name -Force }
-    foreach ($ns in $Namespaces) { Add-DnsClientNrptRule -Namespace $ns -NameServers '127.0.0.1' -Comment $TldComment }
+    foreach ($ns in $Namespaces) { Add-DnsClientNrptRule -Namespace $ns -NameServers '192.0.2.1' -Comment $TldComment }
     Clear-DnsClientCache
     Write-Host "Blocked zones: $($Namespaces -join ' ')" -ForegroundColor Green
 }
