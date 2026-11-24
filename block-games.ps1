@@ -185,6 +185,15 @@ function Set-TldBlock {
     return $true
 }
 
+function Test-TldBlockActive {
+    <# True when every zone is in the EFFECTIVE NRPT policy with our server. Rules can exist and still be ignored:
+       a domain Group Policy with its own NRPT rules overrides local ones. Only then may hosts leave the zones out. #>
+    param([string[]] $Namespaces)
+    $active = @(Get-DnsClientNrptPolicy | Where-Object { $_.NameServers -contains $TldSinkhole } | ForEach-Object { $_.Namespace })
+    foreach ($ns in $Namespaces) { if ($active -notcontains $ns) { return $false } }
+    return $true
+}
+
 function Get-BlockSectionEntries {
     <# Returns the "0.0.0.0 ..." lines currently inside the managed section. #>
     param([string[]] $HostsLines)
@@ -427,6 +436,9 @@ function Invoke-GameBlock {
             $zones = ConvertTo-TldNamespaces ((Get-ListText -Url $TldUrl -Attempts $attempts) -split "`r?`n")
         }
         $flush = Set-TldBlock $zones
+        if ($zones.Count -and -not (Test-TldBlockActive $zones)) {
+            $zones = @(); Write-Warning 'Zone rules are not in effect (Group Policy NRPT?): their sites stay in hosts.'
+        }
     } catch { $zones = @(); Write-Warning "Zone block not updated: $($_.Exception.Message)" }
 
     Write-Host "$(Get-Date -Format HH:mm:ss) Processing..."
