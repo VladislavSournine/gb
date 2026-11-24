@@ -74,6 +74,33 @@ crazygames.com.ua
 retakes.io
 playgama.com
 app.cinevva.com
+# Geometry Dash Lite і копії (частина вже є в UT1)
+geometrydashlite.io
+geometrydashlite.com
+geometrydashlite.net
+geometrydashlite.org
+geometry-dash-lite.com
+geometrydash-lite.com
+geometrydash.io
+geometry-dash.io
+geometrydash.org
+geometrydashonline.com
+geometrydashsubzero.net
+geometrydashmeltdown.io
+geometrylite.com
+# сайти «unblocked games», які діти відкривають у школі (частина вже є в UT1)
+unblockedgames66ez.com
+unblocked-games.io
+unblockedgames911.com
+unblockedgamesworld.com
+classroom6x.com
+tyronesunblockedgames.com
+1v1.lol
+slope-game.io
+# Dead by Daylight: неофіційні сервери і офіційний сайт
+lucaservers.com
+dbd.lucaservers.com
+deadbydaylight.com
 # y8.com: мовні версії — окремі піддомени
 y8.com
 uk.y8.com
