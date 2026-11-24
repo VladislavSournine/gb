@@ -7,6 +7,8 @@
     plus custom-block.txt from the same GitHub repo), writes every domain
     (plus its www. variant) to the hosts file as 0.0.0.0, and disables
     DNS-over-HTTPS in Chrome / Edge / Firefox so browsers cannot bypass hosts.
+    Whole zones from block-tld.txt (.tv, .ru ...) are blocked with Windows DNS rules (NRPT),
+    because hosts has no wildcards.
 
     A normal run also installs the scheduled task "GameBlock", which re-runs the
     LATEST version of this script from GitHub at every Windows startup and once
@@ -25,11 +27,15 @@
     URL of a list of domains that are never blocked, together with all their subdomains
     (default: allow-sites.txt from the repo, e.g. YouTube). Empty string = no exceptions.
 
+.PARAMETER TldUrl
+    URL of a list of whole zones to block (default: block-tld.txt from the repo).
+    Empty string = remove the zone rules this script added.
+
 .PARAMETER Extra
     Additional domains to block on top of the lists, e.g. -Extra roblox.com,epicgames.com
 
 .PARAMETER Remove
-    Remove the block, the scheduled task and the browser DNS-over-HTTPS policies.
+    Remove the block, the zone rules, the scheduled task and the browser DNS-over-HTTPS policies.
 
 .PARAMETER NoAutoUpdate
     Block once, do not install (or remove an existing) scheduled task.
@@ -63,6 +69,7 @@ param(
         'https://raw.githubusercontent.com/VladislavSournine/gb/main/custom-block.txt'
     ),
     [string]   $AllowUrl  = 'https://raw.githubusercontent.com/VladislavSournine/gb/main/allow-sites.txt',
+    [string]   $TldUrl    = 'https://raw.githubusercontent.com/VladislavSournine/gb/main/block-tld.txt',
     [string[]] $Extra     = @(),
     [switch]   $Remove,
     [switch]   $NoAutoUpdate,
@@ -78,6 +85,8 @@ $LogDir      = "$env:ProgramData\GameBlock"
 $MarkerBegin = '# >>> GAME-BLOCK BEGIN (managed by block-games.ps1, do not edit) >>>'
 $MarkerEnd   = '# <<< GAME-BLOCK END <<<'
 $MinExpectedDomains = 100   # sanity check: a broken download must not wipe the existing block
+$TldComment    = 'GameBlock'   # tags our NRPT rules, so rules made by anyone else are never touched
+$ProtectedTlds = @('com', 'net', 'org', 'ua', 'edu', 'gov')   # GitHub (auto-update) and Ukrainian sites must keep working
 
 $CleanDomainRegex = [regex]'^(?=.{1,253}$)([a-z0-9_]([a-z0-9_-]{0,61}[a-z0-9_])?\.)+[a-z0-9-]{2,63}$'
 $IpRegex          = [regex]'^\d{1,3}(\.\d{1,3}){3}$'
@@ -129,6 +138,37 @@ function Get-BlockEntries {
     [Array]::Sort($sorted, [StringComparer]::Ordinal)
     for ($i = 0; $i -lt $sorted.Length; $i++) { $sorted[$i] = "0.0.0.0 " + $sorted[$i] }
     return ,$sorted
+}
+
+function ConvertTo-TldNamespaces {
+    <# Raw block-tld.txt lines -> sorted unique NRPT namespaces ('.tv'). Comments, junk and protected zones are skipped. #>
+    param([string[]] $Lines)
+    $set = [System.Collections.Generic.HashSet[string]]::new()
+    foreach ($line in $Lines) {
+        if ($null -eq $line) { continue }
+        $t = ($line -replace '#.*$', '').Trim().ToLowerInvariant().TrimStart('.')
+        if ($t -notmatch '^([a-z]{2,63}|xn--[a-z0-9-]{1,59})$') { continue }
+        if ($ProtectedTlds -contains $t) { Write-Warning "Zone .$t is never blocked (skipped)."; continue }
+        [void]$set.Add(".$t")
+    }
+    $sorted = [string[]]::new($set.Count)
+    $set.CopyTo($sorted)
+    [Array]::Sort($sorted, [StringComparer]::Ordinal)
+    return ,$sorted
+}
+
+function Set-TldBlock {
+    <# Makes our NRPT rules match $Namespaces: names in each zone are sent to 127.0.0.1, where no DNS server runs,
+       so no site in the zone opens. An empty list removes our rules. #>
+    param([string[]] $Namespaces)
+    $ours = @(Get-DnsClientNrptRule | Where-Object { $_.Comment -eq $TldComment })
+    $have = [string[]]@($ours | ForEach-Object { $_.Namespace })
+    [Array]::Sort($have, [StringComparer]::Ordinal)
+    if (Test-SameEntries $have $Namespaces) { Write-Host "Blocked zones unchanged: $($Namespaces -join ' ')"; return }
+    foreach ($r in $ours) { Remove-DnsClientNrptRule -Name $r.Name -Force }
+    foreach ($ns in $Namespaces) { Add-DnsClientNrptRule -Namespace $ns -NameServers '127.0.0.1' -Comment $TldComment }
+    Clear-DnsClientCache
+    Write-Host "Blocked zones: $($Namespaces -join ' ')" -ForegroundColor Green
 }
 
 function Get-BlockSectionEntries {
@@ -344,6 +384,7 @@ function Invoke-GameBlock {
     if ($Remove) {
         Uninstall-GameBlockTask
         Write-HostsFile -Path $HostsPath -Lines (Remove-BlockSection $current)
+        try { Set-TldBlock @() } catch { Write-Warning "Zone rules not removed: $($_.Exception.Message)" }
         if (-not $SkipBrowserPolicy) { Set-BrowserDohPolicy -Restore }
         ipconfig /flushdns | Out-Null
         Write-Host 'Game block removed.' -ForegroundColor Green
@@ -377,6 +418,15 @@ function Invoke-GameBlock {
         ipconfig /flushdns | Out-Null
         Write-Host "Blocked $($entries.Count) host names." -ForegroundColor Green
     }
+    # a failed download or missing DnsClient module must not undo the hosts block: keep the old zone rules then
+    try {
+        $zones = @()
+        if ($TldUrl) {
+            Write-Host "$(Get-Date -Format HH:mm:ss) Downloading blocked zones: $TldUrl"
+            $zones = ConvertTo-TldNamespaces ((Get-ListText -Url $TldUrl -Attempts $attempts) -split "`r?`n")
+        }
+        Set-TldBlock $zones
+    } catch { Write-Warning "Zone block not updated: $($_.Exception.Message)" }
     if (-not $SkipBrowserPolicy) { Set-BrowserDohPolicy }
 
     if ($FromTask)         { }                          # the task must not re-register itself

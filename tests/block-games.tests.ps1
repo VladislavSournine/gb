@@ -84,6 +84,16 @@ Assert-Equal 'custom: commented ignored'   $false ($custom -contains '0.0.0.0 di
 Assert-Equal 'custom: all lines valid'     0 (@(Get-Content "$PSScriptRoot/../custom-block.txt" |
     Where-Object { $_.Trim() -and -not $_.Trim().StartsWith('#') -and -not (ConvertTo-CleanDomain $_) }).Count)
 
+# --- zones (NRPT): cleaned, sorted, protected zones never blocked
+Assert-Equal 'zones: cleaned + sorted + dedup' @('.ru', '.to', '.tv') `
+    (ConvertTo-TldNamespaces @('tv', '.TO', ' ru # comment', 'tv', '# c', ''))
+Assert-Equal 'zones: punycode kept'      @('.xn--p1ai') (ConvertTo-TldNamespaces @('xn--p1ai'))
+Assert-Equal 'zones: junk skipped'       0 (ConvertTo-TldNamespaces @('a', 'friv.com', 'not a zone', '*.tv')).Length
+Assert-Equal 'zones: protected skipped'  @('.tv') (ConvertTo-TldNamespaces @('com', 'UA', '.net', 'org', 'tv') 3>$null)
+Assert-Equal 'zones: repo file'          $true ((ConvertTo-TldNamespaces (Get-Content "$PSScriptRoot/../block-tld.txt")) -contains '.tv')
+Assert-Equal 'zones: repo lines valid'   0 (@(Get-Content "$PSScriptRoot/../block-tld.txt" |
+    Where-Object { $_.Trim() -and -not $_.Trim().StartsWith('#') -and (ConvertTo-TldNamespaces @($_)).Length -ne 1 }).Count)
+
 Assert-Equal 'remove restores original' $original (Remove-BlockSection $reapplied)
 Assert-Equal 'remove on clean hosts'    $original (Remove-BlockSection $original)
 

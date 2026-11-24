@@ -36,7 +36,7 @@ function Show-GbHelp {
 gb - game block (run in PowerShell as Administrator)
 
   gb sites                 block game sites (hosts) + install auto-update task
-  gb sites -Remove         remove the site block, the task and browser policies
+  gb sites -Remove         remove the site block, zone rules, the task and browser policies
   gb apps -AuditOnly       AppLocker test mode: only log what would be blocked
   gb apps                  block programs from apps-block.txt
   gb apps -Strict          only Windows + Program Files may run for students
