@@ -84,12 +84,25 @@ Assert-Equal 'custom: commented ignored'   $false ($custom -contains '0.0.0.0 di
 Assert-Equal 'custom: all lines valid'     0 (@(Get-Content "$PSScriptRoot/../custom-block.txt" |
     Where-Object { $_.Trim() -and -not $_.Trim().StartsWith('#') -and -not (ConvertTo-CleanDomain $_) }).Count)
 
+# --- www. only for bare sites (fewer names keep the Windows DNS Client fast)
+Assert-Equal 'www: bare site'          @('0.0.0.0 friv.com', '0.0.0.0 www.friv.com') (Get-BlockEntries -Lines @('friv.com'))
+Assert-Equal 'www: bare site in com.ua' @('0.0.0.0 friv.com.ua', '0.0.0.0 www.friv.com.ua') (Get-BlockEntries -Lines @('friv.com.ua'))
+Assert-Equal 'www: bare site in co.uk'  @('0.0.0.0 bbc.co.uk', '0.0.0.0 www.bbc.co.uk') (Get-BlockEntries -Lines @('bbc.co.uk'))
+Assert-Equal 'www: subdomain gets none' @('0.0.0.0 m.tiktok.com') (Get-BlockEntries -Lines @('m.tiktok.com'))
+Assert-Equal 'www: deep name gets none' @('0.0.0.0 a.b.nodes.gen4.ninja') (Get-BlockEntries -Lines @('a.b.nodes.gen4.ninja'))
+
+# --- domains in NRPT-blocked zones stay out of hosts; look-alike endings are kept
+Assert-Equal 'skip zones' @('0.0.0.0 friv.com', '0.0.0.0 rutube.com') `
+    (Get-BlockEntries -Lines @('friv.com', 'kinogo.ru', 'm.kinogo.ru', 'twitch.tv', 'rutube.com') -SkipZones @('.ru', '.tv') -NoWww)
+Assert-Equal 'skip zones: none given'   @('0.0.0.0 kinogo.ru') (Get-BlockEntries -Lines @('kinogo.ru') -NoWww)
+
 # --- zones (NRPT): cleaned, sorted, protected zones never blocked
 Assert-Equal 'zones: cleaned + sorted + dedup' @('.ru', '.to', '.tv') `
     (ConvertTo-TldNamespaces @('tv', '.TO', ' ru # comment', 'tv', '# c', ''))
 Assert-Equal 'zones: punycode kept'      @('.xn--p1ai') (ConvertTo-TldNamespaces @('xn--p1ai'))
 Assert-Equal 'zones: junk skipped'       0 (ConvertTo-TldNamespaces @('a', 'friv.com', 'not a zone', '*.tv')).Length
 Assert-Equal 'zones: protected skipped'  @('.tv') (ConvertTo-TldNamespaces @('com', 'UA', '.net', 'org', 'tv') 3>$null)
+Assert-Equal 'zones: repo file'          $true ((ConvertTo-TldNamespaces (Get-Content "$PSScriptRoot/../block-tld.txt")) -contains '.tv')
 Assert-Equal 'zones: repo lines valid'   0 (@(Get-Content "$PSScriptRoot/../block-tld.txt" |
     Where-Object { $_.Trim() -and -not $_.Trim().StartsWith('#') -and (ConvertTo-TldNamespaces @($_)).Length -ne 1 }).Count)
 

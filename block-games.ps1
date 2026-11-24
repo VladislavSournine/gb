@@ -89,6 +89,8 @@ $TldSinkhole   = '192.0.2.1'   # TEST-NET: nothing answers there (see Set-TldBlo
 $TldComment    = 'GameBlock'   # tags our NRPT rules, so rules made by anyone else are never touched
 $ProtectedTlds = @('com', 'net', 'org', 'ua', 'edu', 'gov')   # GitHub (auto-update) and Ukrainian sites must keep working
 
+# second labels that make a 3-label name a bare site (friv.com.ua, bbc.co.uk): those still get a www. variant
+$WwwSuffixLabels  = [System.Collections.Generic.HashSet[string]]::new([string[]]@('co', 'com', 'net', 'org', 'gov', 'edu', 'ac'))
 $CleanDomainRegex = [regex]'^(?=.{1,253}$)([a-z0-9_]([a-z0-9_-]{0,61}[a-z0-9_])?\.)+[a-z0-9-]{2,63}$'
 $IpRegex          = [regex]'^\d{1,3}(\.\d{1,3}){3}$'
 
@@ -121,18 +123,24 @@ function Test-Allowed {
 
 function Get-BlockEntries {
     <# Turns raw list lines into sorted, de-duplicated "0.0.0.0 domain" hosts lines.
+       www. is added only to bare sites (friv.com, friv.com.ua), not to m.tiktok.com or VPN node names: fewer names
+       keep the Windows DNS Client fast. Domains in $SkipZones ('.ru', blocked by NRPT already) are left out.
        No pipelines on purpose: Windows PowerShell 5.1 is slow with them on ~70k items. #>
-    param([string[]] $Lines, [string[]] $Allow = @(), [switch] $NoWww)
+    param([string[]] $Lines, [string[]] $Allow = @(), [string[]] $SkipZones = @(), [switch] $NoWww)
     $allowSet = [System.Collections.Generic.HashSet[string]]::new()
     foreach ($a in $Allow) { $c = ConvertTo-CleanDomain $a; if ($c) { [void]$allowSet.Add($c) } }
+    $skipSet = [System.Collections.Generic.HashSet[string]]::new([string[]]@($SkipZones))
     $set = [System.Collections.Generic.HashSet[string]]::new()
     foreach ($line in $Lines) {
         # fast path: most lines are already clean lower-case domains
         if ($CleanDomainRegex.IsMatch($line) -and -not $IpRegex.IsMatch($line)) { $d = $line }
         else { $d = ConvertTo-CleanDomain $line; if (-not $d) { continue } }
         if ($allowSet.Count -and (Test-Allowed $d $allowSet)) { continue }
+        if ($skipSet.Count -and $skipSet.Contains($d.Substring($d.LastIndexOf('.')))) { continue }
         [void]$set.Add($d)
-        if (-not $NoWww -and -not $d.StartsWith('www.')) { [void]$set.Add("www.$d") }
+        if ($NoWww -or $d.StartsWith('www.')) { continue }
+        $p = $d.Split('.')
+        if ($p.Length -eq 2 -or ($p.Length -eq 3 -and $WwwSuffixLabels.Contains($p[1]))) { [void]$set.Add("www.$d") }
     }
     $sorted = [string[]]::new($set.Count)
     $set.CopyTo($sorted)
@@ -161,7 +169,8 @@ function ConvertTo-TldNamespaces {
 function Set-TldBlock {
     <# Makes our NRPT rules match $Namespaces: names in each zone are sent to 192.0.2.1 (TEST-NET, nothing answers there),
        so no site in the zone opens. Not 127.0.0.1: Windows lets any user listen on local port 53, so a student could
-       run their own resolver there. An empty list removes our rules. #>
+       run their own resolver there. An empty list removes our rules. Returns $true when rules changed.
+       Does not flush the DNS cache: every flush makes Windows re-read the whole hosts file (minutes on slow PCs). #>
     param([string[]] $Namespaces)
     $ours = @(Get-DnsClientNrptRule | Where-Object { $_.Comment -eq $TldComment })
     # compare zone AND server, so rules made by an older version (127.0.0.1) get replaced too
@@ -169,11 +178,11 @@ function Set-TldBlock {
     $want = [string[]]@($Namespaces | ForEach-Object { "$_ > $TldSinkhole" })
     [Array]::Sort($have, [StringComparer]::Ordinal)
     [Array]::Sort($want, [StringComparer]::Ordinal)
-    if (Test-SameEntries $have $want) { Write-Host "Blocked zones unchanged: $($Namespaces -join ' ')"; return }
-    foreach ($r in $ours) { Remove-DnsClientNrptRule -Name $r.Name -Force }
-    foreach ($ns in $Namespaces) { Add-DnsClientNrptRule -Namespace $ns -NameServers $TldSinkhole -Comment $TldComment }
-    Clear-DnsClientCache
+    if (Test-SameEntries $have $want) { Write-Host "Blocked zones unchanged: $($Namespaces -join ' ')"; return $false }
+    foreach ($r in $ours) { Remove-DnsClientNrptRule -Name $r.Name -Force | Out-Null }
+    foreach ($ns in $Namespaces) { Add-DnsClientNrptRule -Namespace $ns -NameServers $TldSinkhole -Comment $TldComment | Out-Null }
     Write-Host "Blocked zones: $($Namespaces -join ' ')" -ForegroundColor Green
+    return $true
 }
 
 function Get-BlockSectionEntries {
@@ -389,7 +398,7 @@ function Invoke-GameBlock {
     if ($Remove) {
         Uninstall-GameBlockTask
         Write-HostsFile -Path $HostsPath -Lines (Remove-BlockSection $current)
-        try { Set-TldBlock @() } catch { Write-Warning "Zone rules not removed: $($_.Exception.Message)" }
+        try { [void](Set-TldBlock @()) } catch { Write-Warning "Zone rules not removed: $($_.Exception.Message)" }
         if (-not $SkipBrowserPolicy) { Set-BrowserDohPolicy -Restore }
         ipconfig /flushdns | Out-Null
         Write-Host 'Game block removed.' -ForegroundColor Green
@@ -409,8 +418,19 @@ function Invoke-GameBlock {
         $allow = (Get-ListText -Url $AllowUrl -Attempts $attempts) -split "`r?`n"
     }
 
+    # zones first: hosts may leave out their domains only when the zone rules are really in place.
+    # A failed download or missing DnsClient module must not undo any block: old rules stay, hosts keeps everything.
+    $zones = @(); $flush = $false
+    try {
+        if ($TldUrl) {
+            Write-Host "$(Get-Date -Format HH:mm:ss) Downloading blocked zones: $TldUrl"
+            $zones = ConvertTo-TldNamespaces ((Get-ListText -Url $TldUrl -Attempts $attempts) -split "`r?`n")
+        }
+        $flush = Set-TldBlock $zones
+    } catch { $zones = @(); Write-Warning "Zone block not updated: $($_.Exception.Message)" }
+
     Write-Host "$(Get-Date -Format HH:mm:ss) Processing..."
-    $entries = Get-BlockEntries -Lines $lines.ToArray() -Allow $allow -NoWww:$NoWww
+    $entries = Get-BlockEntries -Lines $lines.ToArray() -Allow $allow -SkipZones $zones -NoWww:$NoWww
     if ($entries.Count -lt $MinExpectedDomains) {
         throw "Only $($entries.Count) domains parsed - list looks broken, hosts file left unchanged."
     }
@@ -420,18 +440,13 @@ function Invoke-GameBlock {
         Write-Host "Block list unchanged ($($entries.Count) host names), hosts not rewritten."
     } else {
         Write-HostsFile -Path $HostsPath -Lines (Add-BlockSection $current $hostsLines $ListUrl)
-        ipconfig /flushdns | Out-Null
+        $flush = $true
         Write-Host "Blocked $($entries.Count) host names." -ForegroundColor Green
     }
-    # a failed download or missing DnsClient module must not undo the hosts block: keep the old zone rules then
-    try {
-        $zones = @()
-        if ($TldUrl) {
-            Write-Host "$(Get-Date -Format HH:mm:ss) Downloading blocked zones: $TldUrl"
-            $zones = ConvertTo-TldNamespaces ((Get-ListText -Url $TldUrl -Attempts $attempts) -split "`r?`n")
-        }
-        Set-TldBlock $zones
-    } catch { Write-Warning "Zone block not updated: $($_.Exception.Message)" }
+    if ($flush) {   # once per run: Windows re-reads the whole hosts file on every flush
+        Write-Host "$(Get-Date -Format HH:mm:ss) Flushing DNS cache (Windows re-reads hosts, may take a while)..."
+        ipconfig /flushdns | Out-Null
+    }
     if (-not $SkipBrowserPolicy) { Set-BrowserDohPolicy }
 
     if ($FromTask)         { }                          # the task must not re-register itself
