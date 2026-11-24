@@ -22,6 +22,38 @@ graph.instagram.com
 cdninstagram.com
 ig.me
 
+# --- Pinterest (мовні версії — окремі піддомени; pinimg.com — картинки й відео) ---
+pinterest.com
+m.pinterest.com
+api.pinterest.com
+ru.pinterest.com
+ua.pinterest.com
+uk.pinterest.com
+pl.pinterest.com
+de.pinterest.com
+pinterest.co.uk
+pinterest.de
+pinterest.ru
+pin.it
+pinimg.com
+i.pinimg.com
+s.pinimg.com
+v.pinimg.com
+
+# --- Схожі стрічки картинок, мемів і коротких відео ---
+tumblr.com
+weheartit.com
+9gag.com
+imgur.com
+i.imgur.com
+ifunny.co
+pikabu.ru
+joyreactor.cc
+likee.video
+snapchat.com
+web.snapchat.com
+lemon8-app.com
+
 # --- Twitch (стріми ігор) ---
 twitch.tv
 m.twitch.tv
