@@ -169,6 +169,82 @@ hdrezka.co
 uaserials.my
 seasonvar.ru
 kinopoisk.ru
+# піратські дзеркала (HDrezka, kinogo, filmix, lordfilm часто міняють домен)
+hdrezka.ac
+hdrezka.cm
+hdrezka.ink
+hdrezka.sh
+hdrezka.kim
+rezka.cc
+kinogo.ec
+kinogo.inc
+kinogo.film
+filmix.my
+filmix.fm
+lordfilm.ru
+lordfilm.so
+zetflix.online
+kinokong.pro
+kinoprostir.com
+ufdub.com
+uaserial.club
+uakino.lu
+hdua.tv
+kinovezha.com
+moviestape.net
+kinozal.tv
+# аніме онлайн
+anilibria.tv
+animevost.org
+animedia.tv
+hianime.to
+aniwatch.to
+gogoanime3.co
+# англомовні піратські сайти
+fmovies.to
+123movies.to
+soap2day.to
+putlocker.vip
+# торенти (звідти качають серіали й фільми)
+toloka.to
+rutracker.org
+rutor.info
+nnmclub.to
+1337x.to
+yts.mx
+eztvx.to
+
+# --- Легальні онлайн-кінотеатри й ТБ-сервіси, яких немає в UT1
+#     (netflix, megogo.net, max, disney+, prime video, apple tv, crunchyroll вже є там) ---
+megogo.tv
+oll.tv
+youtv.com.ua
+youtv.ua
+volia.tv
+divan.tv
+lanet.tv
+okko.tv
+kion.ru
+wink.ru
+start.ru
+premier.one
+more.tv
+amediateka.ru
+ivi.tv
+hd.kinopoisk.ru
+
+# --- Українські телеканали: сайти з серіалами й шоу
+#     (новинні сайти tsn.ua, suspilne.media не блокуються) ---
+1plus1.ua
+2plus2.ua
+ictv.ua
+stb.ua
+novy.tv
+tet.tv
+kanalukraina.tv
+inter.ua
+k1.ua
+bigudi.tv
 
 # --- Ставки на спорт і онлайн-казино (українські й найпопулярніші).
 #     Повну категорію UT1 gambling (48 тис. доменів) не підключаємо: вона подвоїла б hosts. ---
